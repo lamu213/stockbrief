@@ -1,0 +1,285 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>StockBrief &mdash; US Stock Research</title>
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+    background: #F5F0E8;
+    color: #1A1A1A;
+    min-height: 100vh;
+    line-height: 1.5;
+  }
+  .container { max-width: 800px; margin: 0 auto; padding: 40px 20px; }
+
+  /* Header */
+  .header { text-align: center; margin-bottom: 48px; }
+  .header h1 {
+    font-size: 28px; font-weight: 700; color: #C96442; letter-spacing: -0.3px;
+    display: flex; align-items: center; justify-content: center; gap: 10px;
+  }
+  .header h1 span { background: #C96442; color: #F5F0E8; font-size: 14px; padding: 2px 10px; border-radius: 4px; font-weight: 500; }
+  .header p { color: #666; font-size: 14px; margin-top: 6px; }
+
+  /* Search */
+  .search-card {
+    background: #fff; border-radius: 16px; padding: 32px; box-shadow: 0 2px 12px rgba(0,0,0,0.06);
+    margin-bottom: 32px; text-align: center;
+  }
+  .search-box { display: flex; gap: 12px; max-width: 400px; margin: 0 auto; }
+  .search-box input {
+    flex: 1; padding: 14px 18px; border: 2px solid #ddd; border-radius: 10px;
+    font-size: 16px; outline: none; transition: border-color 0.2s; background: #F5F0E8;
+  }
+  .search-box input:focus { border-color: #C96442; }
+  .search-box button {
+    padding: 14px 28px; background: #C96442; color: #fff; border: none; border-radius: 10px;
+    font-size: 16px; font-weight: 600; cursor: pointer; transition: background 0.2s; white-space: nowrap;
+  }
+  .search-box button:hover { background: #b35332; }
+  .search-box button:disabled { opacity: 0.5; cursor: not-allowed; }
+
+  /* Loading */
+  .loading { display: none; flex-direction: column; align-items: center; padding: 60px 0; }
+  .loading.active { display: flex; }
+  .spinner {
+    width: 36px; height: 36px; border: 3px solid #ddd; border-top-color: #C96442;
+    border-radius: 50%; animation: spin 0.7s linear infinite; margin-bottom: 16px;
+  }
+  @keyframes spin { to { transform: rotate(360deg); } }
+  .loading p { color: #888; font-size: 14px; }
+
+  /* Results */
+  .results { display: none; }
+  .results.active { display: block; }
+
+  /* Card */
+  .card {
+    background: #fff; border-radius: 16px; padding: 28px; box-shadow: 0 2px 12px rgba(0,0,0,0.06);
+    margin-bottom: 20px;
+  }
+  .card-title {
+    font-size: 13px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.8px;
+    color: #C96442; margin-bottom: 16px;
+  }
+
+  /* Company header */
+  .company-header { margin-bottom: 12px; }
+  .company-header h2 { font-size: 22px; font-weight: 700; }
+  .company-header .price { font-size: 28px; font-weight: 600; color: #1A1A1A; margin-top: 4px; }
+  .company-header .ticker-badge {
+    display: inline-block; background: #F5F0E8; color: #C96442; font-size: 12px;
+    font-weight: 600; padding: 2px 10px; border-radius: 4px; margin-left: 8px; vertical-align: middle;
+  }
+  .snapshot-text { color: #444; font-size: 15px; line-height: 1.6; }
+
+  /* Verdict */
+  .verdict-badge {
+    display: inline-block; padding: 6px 20px; border-radius: 24px; font-size: 18px;
+    font-weight: 700; margin-bottom: 12px;
+  }
+  .verdict-badge.cheap { background: #d4edda; color: #155724; }
+  .verdict-badge.fair { background: #fff3cd; color: #856404; }
+  .verdict-badge.expensive { background: #f8d7da; color: #721c24; }
+  .verdict-badge.n-a { background: #e9ecef; color: #6c757d; }
+  .verdict-rationale { color: #444; font-size: 15px; line-height: 1.6; }
+
+  /* Scorecard */
+  .scorecard-grid { display: grid; gap: 12px; }
+  .score-item {
+    display: flex; align-items: center; gap: 14px; padding: 14px 16px;
+    background: #F5F0E8; border-radius: 10px; opacity: 0; transform: translateY(12px);
+    animation: fadeInUp 0.35s ease forwards;
+  }
+  .score-item:nth-child(1) { animation-delay: 0.05s; }
+  .score-item:nth-child(2) { animation-delay: 0.15s; }
+  .score-item:nth-child(3) { animation-delay: 0.25s; }
+  .score-item:nth-child(4) { animation-delay: 0.35s; }
+  .score-item:nth-child(5) { animation-delay: 0.45s; }
+  @keyframes fadeInUp { to { opacity: 1; transform: translateY(0); } }
+  .score-item .badge {
+    flex-shrink: 0; width: 72px; text-align: center; padding: 4px 0; border-radius: 20px;
+    font-size: 12px; font-weight: 700; letter-spacing: 0.3px;
+  }
+  .score-item .badge.green { background: #28a745; color: #fff; }
+  .score-item .badge.yellow { background: #ffc107; color: #1A1A1A; }
+  .score-item .badge.red { background: #dc3545; color: #fff; }
+  .score-item .badge.grey { background: #adb5bd; color: #fff; }
+  .score-item .value { flex-shrink: 0; font-weight: 700; font-size: 15px; min-width: 70px; }
+  .score-item .note { color: #555; font-size: 13px; line-height: 1.5; }
+
+  /* Risk flags */
+  .risk-item {
+    padding: 12px 0; border-bottom: 1px solid #eee; font-size: 14px;
+  }
+  .risk-item:last-child { border-bottom: none; }
+  .risk-item strong { color: #dc3545; }
+
+  /* News */
+  .news-item {
+    padding: 14px 0; border-bottom: 1px solid #eee;
+  }
+  .news-item:last-child { border-bottom: none; }
+  .news-item a {
+    color: #1A1A1A; text-decoration: none; font-weight: 500; font-size: 15px;
+    display: block; margin-bottom: 4px;
+  }
+  .news-item a:hover { color: #C96442; }
+  .news-meta { font-size: 12px; color: #888; }
+
+  /* Error */
+  .error {
+    display: none; background: #f8d7da; color: #721c24; border-radius: 10px;
+    padding: 16px 20px; margin-bottom: 20px; font-size: 14px;
+  }
+  .error.active { display: block; }
+
+  /* Footer */
+  .footer { text-align: center; color: #aaa; font-size: 12px; margin-top: 48px; padding-bottom: 20px; }
+
+  /* Mobile */
+  @media (max-width: 600px) {
+    .container { padding: 20px 16px; }
+    .header h1 { font-size: 22px; }
+    .search-box { flex-direction: column; }
+    .search-box button { width: 100%; }
+    .card { padding: 20px; }
+    .score-item { flex-wrap: wrap; }
+    .score-item .note { width: 100%; margin-top: 4px; }
+  }
+</style>
+</head>
+<body>
+<div class="container">
+  <div class="header">
+    <h1>StockBrief <span>US Stocks</span></h1>
+    <p>Plain-English research briefs for retail investors</p>
+  </div>
+
+  <div class="search-card">
+    <div class="search-box">
+      <input type="text" id="tickerInput" placeholder="Enter ticker e.g. AAPL" maxlength="10" autocomplete="off">
+      <button id="generateBtn" onclick="generate()">Generate</button>
+    </div>
+  </div>
+
+  <div class="error" id="error"></div>
+
+  <div class="loading" id="loading">
+    <div class="spinner"></div>
+    <p>Pulling data for you&hellip;</p>
+  </div>
+
+  <div class="results" id="results"></div>
+
+  <div class="footer">StockBrief &mdash; for informational purposes only. Not financial advice.</div>
+</div>
+
+<script>
+const input = document.getElementById('tickerInput');
+input.addEventListener('keydown', e => { if (e.key === 'Enter') generate(); });
+input.focus();
+
+async function generate() {
+  const ticker = input.value.trim().toUpperCase();
+  if (!ticker) return;
+
+  const btn = document.getElementById('generateBtn');
+  const error = document.getElementById('error');
+  const loading = document.getElementById('loading');
+  const results = document.getElementById('results');
+
+  error.classList.remove('active');
+  results.classList.remove('active');
+  results.innerHTML = '';
+  loading.classList.add('active');
+  btn.disabled = true;
+
+  try {
+    const resp = await fetch('/api/research', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ ticker })
+    });
+    const data = await resp.json();
+    if (!resp.ok) throw new Error(data.error || 'Something went wrong');
+
+    loading.classList.remove('active');
+    results.classList.add('active');
+    btn.disabled = false;
+
+    const label = status => {
+      const map = { green: '✓', yellow: '●', red: '✗', grey: '—' };
+      return map[status] || status;
+    };
+
+    const badges = data.scorecard.map(s =>
+      `<div class="score-item">
+        <div class="badge ${s.status}">${label(s.status)}</div>
+        <div class="value">${s.value}</div>
+        <div class="note">${s.note}</div>
+      </div>`
+    ).join('');
+
+    const riskItems = data.riskFlags.length
+      ? data.riskFlags.map(r =>
+          `<div class="risk-item"><strong>${r.factor}:</strong> ${r.note}</div>`
+        ).join('')
+      : '<div class="risk-item" style="color:#888;">No major red flags detected.</div>';
+
+    const newsItems = data.news.map(n =>
+      `<div class="news-item">
+        ${n.url ? `<a href="${n.url}" target="_blank" rel="noopener">${n.title}</a>` : `<span style="color:#888;">${n.title}</span>`}
+        <div class="news-meta">${n.date}${n.source ? ` &middot; ${n.source}` : ''}</div>
+      </div>`
+    ).join('');
+
+    const verdictClass = (data.verdict || '').toLowerCase().replace(/[^a-z]/g, '');
+
+    results.innerHTML = `
+      <div class="card">
+        <div class="company-header">
+          <h2>${data.companyName} <span class="ticker-badge">${data.ticker}</span></h2>
+          <div class="price">$${data.price != null ? data.price.toFixed(2) : '—'}</div>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="card-title">Company Snapshot</div>
+        <div class="snapshot-text">${data.snapshot}</div>
+      </div>
+
+      <div class="card">
+        <div class="card-title">Five-Factor Scorecard</div>
+        <div class="scorecard-grid">${badges}</div>
+      </div>
+
+      <div class="card">
+        <div class="card-title">Overall Valuation Verdict</div>
+        <div class="verdict-badge ${verdictClass}">${data.verdict}</div>
+        <div class="verdict-rationale">${data.rationale}</div>
+      </div>
+
+      <div class="card">
+        <div class="card-title">Risk Flags</div>
+        ${riskItems}
+      </div>
+
+      <div class="card">
+        <div class="card-title">Recent News</div>
+        ${newsItems}
+      </div>
+    `;
+  } catch (err) {
+    loading.classList.remove('active');
+    btn.disabled = false;
+    error.textContent = err.message;
+    error.classList.add('active');
+  }
+}
+</script>
+</body>
+</html>
