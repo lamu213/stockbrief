@@ -1,0 +1,64 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>StockBrief — US Stock Research</title>
+    <link rel="stylesheet" href="/static/style.css">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+</head>
+<body>
+    <div class="container">
+        <header class="header">
+            <h1 class="logo">StockBrief</h1>
+            <p class="tagline">Clear research briefs for everyday investors</p>
+        </header>
+
+        <section class="search-section">
+            <div class="search-box">
+                <input type="text" id="tickerInput" placeholder="Enter a ticker (e.g. AAPL)" maxlength="10" autocomplete="off">
+                <button id="generateBtn">Generate Brief</button>
+            </div>
+            <p id="errorMsg" class="error-msg"></p>
+        </section>
+
+        <section id="loadingSection" class="loading-section hidden">
+            <div class="spinner"></div>
+            <p class="loading-text">Gathering data...</p>
+        </section>
+
+        <main id="briefContent" class="brief-content hidden">
+            <section class="snapshot card">
+                <h2 class="company-name" id="companyName"></h2>
+                <p class="current-price" id="currentPrice"></p>
+                <p class="snapshot-text" id="snapshotText"></p>
+            </section>
+
+            <section class="scorecard">
+                <h3 class="section-title">Five-Factor Scorecard</h3>
+                <div class="factor-grid" id="factorGrid"></div>
+            </section>
+
+            <section class="verdict card">
+                <h3 class="section-title">Overall Valuation Verdict</h3>
+                <span class="verdict-badge" id="verdictBadge"></span>
+                <p class="verdict-rationale" id="verdictRationale"></p>
+            </section>
+
+            <section class="risk-flags card" id="riskSection">
+                <h3 class="section-title">Risk Flags</h3>
+                <ul class="risk-list" id="riskList"></ul>
+            </section>
+
+            <section class="news card">
+                <h3 class="section-title">Recent News</h3>
+                <div class="news-list" id="newsList"></div>
+            </section>
+        </main>
+    </div>
+
+    <script src="/static/app.js"></script>
+</body>
+</html>
