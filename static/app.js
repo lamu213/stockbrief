@@ -9,8 +9,7 @@ document.addEventListener('DOMContentLoaded', () => {
     const currentPriceEl = document.getElementById('currentPrice');
     const snapshotTextEl = document.getElementById('snapshotText');
     const factorGrid = document.getElementById('factorGrid');
-    const verdictBadge = document.getElementById('verdictBadge');
-    const verdictRationale = document.getElementById('verdictRationale');
+    const snapshotSentenceEl = document.getElementById('snapshotSentence');
     const riskSection = document.getElementById('riskSection');
     const riskList = document.getElementById('riskList');
     const newsList = document.getElementById('newsList');
@@ -95,10 +94,7 @@ document.addEventListener('DOMContentLoaded', () => {
             factorGrid.appendChild(card);
         });
 
-        const v = data.verdict;
-        verdictBadge.className = `verdict-badge verdict-${v.verdict}`;
-        verdictBadge.textContent = v.verdict;
-        verdictRationale.textContent = v.rationale;
+        snapshotSentenceEl.textContent = data.snapshot_sentence || '';
 
         if (data.risk_flags && data.risk_flags.length > 0) {
             riskSection.classList.remove('hidden');

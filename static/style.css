@@ -286,35 +286,12 @@ body {
     color: var(--grey-badge);
 }
 
-/* Verdict */
-.verdict-badge {
-    display: inline-block;
-    padding: 8px 20px;
-    border-radius: 999px;
-    font-size: 1rem;
-    font-weight: 700;
-    margin-bottom: 12px;
-}
-
-.verdict-Cheap {
-    background: var(--green-bg);
-    color: var(--green);
-}
-
-.verdict-Fair {
-    background: var(--yellow-bg);
-    color: var(--yellow);
-}
-
-.verdict-Expensive {
-    background: var(--red-bg);
-    color: var(--red);
-}
-
-.verdict-rationale {
-    font-size: 0.95rem;
+/* Snapshot sentence */
+.snapshot-sentence-text {
+    font-size: 1.05rem;
     color: var(--charcoal-light);
-    line-height: 1.6;
+    line-height: 1.65;
+    font-weight: 500;
 }
 
 /* Risk flags */
