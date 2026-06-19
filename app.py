@@ -1,6 +1,6 @@
 import os
 import math
-from datetime import datetime
+from datetime import datetime, timedelta
 from flask import Flask, render_template, jsonify, request
 import yfinance as yf
 import requests
@@ -8,7 +8,7 @@ import pandas as pd
 
 app = Flask(__name__)
 
-NEWS_API_KEY = os.environ.get('NEWS_API_KEY', '')
+FINNHUB_API_KEY = os.environ.get('FINNHUB_API_KEY', '')
 
 # ============================================================================
 # Helpers
@@ -443,30 +443,34 @@ def get_risk_explanations(factors):
     return explanations
 
 
-def fetch_news(query):
-    if not NEWS_API_KEY:
+def fetch_news(ticker):
+    if not FINNHUB_API_KEY:
         return []
-    url = 'https://newsapi.org/v2/everything'
-    params = {
-        'q': query,
-        'sortBy': 'publishedAt',
-        'language': 'en',
-        'pageSize': 3,
-        'apiKey': NEWS_API_KEY
-    }
+
+    today = datetime.now()
+    thirty_days_ago = today - timedelta(days=30)
+    url = (
+        f"https://finnhub.io/api/v1/company-news"
+        f"?symbol={ticker}"
+        f"&from={thirty_days_ago.strftime('%Y-%m-%d')}"
+        f"&to={today.strftime('%Y-%m-%d')}"
+        f"&token={FINNHUB_API_KEY}"
+    )
     try:
-        resp = requests.get(url, params=params, timeout=10)
-        data = resp.json()
-        if data.get('status') == 'ok':
-            articles = data.get('articles', [])
-            return [
-                {
-                    'title': a.get('title', ''),
-                    'publishedAt': a.get('publishedAt', '')[:10],
-                    'url': a.get('url', '')
-                }
-                for a in articles
-            ]
+        resp = requests.get(url, timeout=10)
+        articles = resp.json()
+        if not isinstance(articles, list):
+            return []
+        # Take the 3 most recent articles (Finnhub returns newest first)
+        recent = articles[:3]
+        return [
+            {
+                'title': a.get('headline', ''),
+                'publishedAt': datetime.fromtimestamp(a.get('datetime', 0)).strftime('%Y-%m-%d'),
+                'url': a.get('url', '')
+            }
+            for a in recent
+        ]
     except Exception:
         pass
     return []
@@ -549,7 +553,7 @@ def stock_api(ticker):
     next_earnings_days = earnings.get('raw')
     snapshot_sentence = generate_valuation_snapshot(company_name, factors, next_earnings_days)
     risk_flags = get_risk_explanations(factors)
-    news = fetch_news(f"{company_name} stock")
+    news = fetch_news(ticker)
 
     return jsonify({
         'ticker': ticker,
