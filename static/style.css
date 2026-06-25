@@ -291,7 +291,7 @@ body {
     display: none;
     width: 48px;
     height: 48px;
-    border-radius: 12px;
+    border-radius: 50%;
     background: var(--charcoal);
     color: #fff;
     font-size: 1.3rem;
