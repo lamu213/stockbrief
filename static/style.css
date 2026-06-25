@@ -1,5 +1,6 @@
 /* ============================================
    StockBrief — Warm, approachable finance UI
+   Palette: cream #F5F0E8 / terracotta #C96442 / charcoal #1A1A1A
    ============================================ */
 
 :root {
@@ -9,17 +10,19 @@
     --charcoal: #1A1A1A;
     --charcoal-light: #333333;
     --grey-text: #6B6B6B;
+    --grey-soft: #8A8A8A;
     --card-bg: #FFFFFF;
-    --green: #2D8A4E;
-    --green-bg: #E6F4EA;
-    --yellow: #C9A227;
-    --yellow-bg: #FDF8E3;
-    --red: #C94A42;
-    --red-bg: #FDECEA;
-    --grey-badge: #888888;
-    --grey-bg: #F0F0F0;
+
+    /* Traffic-light badge colors (white text on all) */
+    --badge-red: #E53E3E;
+    --badge-yellow: #D69E2E;
+    --badge-green: #38A169;
+    --badge-grey: #A0AEC0;
+
     --shadow: 0 4px 24px rgba(0, 0, 0, 0.06);
+    --shadow-sm: 0 2px 10px rgba(0, 0, 0, 0.05);
     --radius: 16px;
+    --radius-sm: 12px;
 }
 
 * {
@@ -37,39 +40,50 @@ body {
 }
 
 .container {
-    max-width: 720px;
+    max-width: 760px;
     margin: 0 auto;
     padding: 40px 20px 80px;
 }
 
-/* Header */
-.header {
+.hidden {
+    display: none !important;
+}
+
+/* ============================================
+   Step 1 — Minimal input view
+   ============================================ */
+.input-view {
+    min-height: 78vh;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
     text-align: center;
-    margin-bottom: 40px;
+}
+
+.header {
+    margin-bottom: 36px;
 }
 
 .logo {
-    font-size: 2.2rem;
-    font-weight: 700;
+    font-size: 2.6rem;
+    font-weight: 800;
     color: var(--terracotta);
-    letter-spacing: -0.5px;
+    letter-spacing: -0.8px;
 }
 
 .tagline {
-    font-size: 0.95rem;
+    font-size: 1.05rem;
     color: var(--grey-text);
-    margin-top: 6px;
+    margin-top: 8px;
     font-weight: 400;
-}
-
-/* Search */
-.search-section {
-    margin-bottom: 32px;
 }
 
 .search-box {
     display: flex;
     gap: 12px;
+    width: 100%;
+    max-width: 460px;
     background: var(--card-bg);
     padding: 10px;
     border-radius: var(--radius);
@@ -82,7 +96,7 @@ body {
     outline: none;
     font-size: 1.1rem;
     padding: 12px 16px;
-    border-radius: 12px;
+    border-radius: var(--radius-sm);
     background: var(--cream);
     color: var(--charcoal);
     font-weight: 500;
@@ -100,11 +114,12 @@ body {
     color: #fff;
     border: none;
     padding: 12px 24px;
-    border-radius: 12px;
+    border-radius: var(--radius-sm);
     font-size: 1rem;
     font-weight: 600;
     cursor: pointer;
     transition: background 0.2s, transform 0.15s;
+    white-space: nowrap;
 }
 
 #generateBtn:hover {
@@ -115,21 +130,50 @@ body {
     transform: scale(0.97);
 }
 
-.error-msg {
-    color: var(--red);
-    font-size: 0.9rem;
-    margin-top: 10px;
-    min-height: 1.4em;
-    text-align: center;
+.quick-picks {
+    display: flex;
+    gap: 10px;
+    margin-top: 22px;
 }
 
-/* Loading */
+.quick-pick {
+    background: transparent;
+    color: var(--terracotta);
+    border: 1.5px solid var(--terracotta);
+    padding: 8px 20px;
+    border-radius: 999px;
+    font-size: 0.9rem;
+    font-weight: 600;
+    cursor: pointer;
+    letter-spacing: 0.4px;
+    transition: background 0.2s, color 0.2s, transform 0.15s;
+}
+
+.quick-pick:hover {
+    background: var(--terracotta);
+    color: #fff;
+}
+
+.quick-pick:active {
+    transform: scale(0.96);
+}
+
+.error-msg {
+    color: var(--badge-red);
+    font-size: 0.9rem;
+    margin-top: 16px;
+    min-height: 1.4em;
+}
+
+/* ============================================
+   Loading
+   ============================================ */
 .loading-section {
     display: flex;
     flex-direction: column;
     align-items: center;
     justify-content: center;
-    padding: 60px 0;
+    padding: 80px 0;
     gap: 16px;
 }
 
@@ -157,52 +201,181 @@ body {
     50% { opacity: 1; }
 }
 
-/* Brief content */
+/* ============================================
+   Results
+   ============================================ */
 .brief-content {
     display: flex;
     flex-direction: column;
     gap: 24px;
 }
 
+.new-search {
+    align-self: flex-start;
+    background: none;
+    border: none;
+    color: var(--grey-text);
+    font-size: 0.85rem;
+    font-weight: 500;
+    cursor: pointer;
+    padding: 4px 0;
+    transition: color 0.2s;
+}
+
+.new-search:hover {
+    color: var(--terracotta);
+}
+
 .card {
     background: var(--card-bg);
     border-radius: var(--radius);
-    padding: 24px;
+    padding: 26px;
     box-shadow: var(--shadow);
-    transition: transform 0.3s ease, opacity 0.3s ease;
 }
 
 .section-title {
-    font-size: 0.85rem;
-    font-weight: 600;
+    font-size: 0.8rem;
+    font-weight: 700;
     color: var(--grey-text);
     text-transform: uppercase;
-    letter-spacing: 0.6px;
+    letter-spacing: 0.7px;
     margin-bottom: 14px;
 }
 
-/* Snapshot */
+/* ============================================
+   Hero
+   ============================================ */
+.hero {
+    padding: 28px;
+}
+
+.hero-top {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 20px;
+    flex-wrap: wrap;
+}
+
+.hero-id {
+    min-width: 0;
+}
+
 .company-name {
-    font-size: 1.5rem;
-    font-weight: 700;
+    font-size: 1.7rem;
+    font-weight: 800;
     color: var(--charcoal);
-    margin-bottom: 4px;
+    letter-spacing: -0.5px;
+    line-height: 1.15;
+}
+
+.ticker-symbol {
+    display: inline-block;
+    margin-top: 6px;
+    background: var(--cream);
+    color: var(--terracotta);
+    font-size: 0.8rem;
+    font-weight: 700;
+    letter-spacing: 0.6px;
+    padding: 4px 12px;
+    border-radius: 999px;
+}
+
+.price-block {
+    text-align: right;
+    margin-left: auto;
 }
 
 .current-price {
-    font-size: 1.1rem;
+    font-size: 2.1rem;
+    font-weight: 800;
+    color: var(--charcoal);
+    line-height: 1.1;
+    letter-spacing: -0.5px;
+    font-variant-numeric: tabular-nums;
+}
+
+.price-change {
+    margin-top: 4px;
+    font-size: 0.95rem;
     font-weight: 600;
+    font-variant-numeric: tabular-nums;
+}
+
+.price-change.up {
+    color: var(--badge-green);
+}
+
+.price-change.down {
+    color: var(--badge-red);
+}
+
+.price-change.flat {
+    color: var(--grey-soft);
+}
+
+/* ============================================
+   Chart
+   ============================================ */
+.chart-block {
+    margin-top: 24px;
+}
+
+.chart-tabs {
+    display: inline-flex;
+    background: var(--cream);
+    border-radius: 999px;
+    padding: 4px;
+    gap: 2px;
+    margin-bottom: 16px;
+}
+
+.chart-tab {
+    background: transparent;
+    border: none;
+    color: var(--grey-text);
+    font-size: 0.82rem;
+    font-weight: 600;
+    padding: 6px 16px;
+    border-radius: 999px;
+    cursor: pointer;
+    letter-spacing: 0.4px;
+    transition: background 0.2s, color 0.2s;
+}
+
+.chart-tab:hover {
+    color: var(--charcoal);
+}
+
+.chart-tab.active {
+    background: var(--card-bg);
     color: var(--terracotta);
-    margin-bottom: 12px;
+    box-shadow: var(--shadow-sm);
+}
+
+.chart-wrap {
+    position: relative;
+    width: 100%;
+    height: 300px;
+}
+
+.chart-note {
+    margin-top: 10px;
+    font-size: 0.78rem;
+    color: var(--grey-soft);
+    text-align: right;
 }
 
 .snapshot-text {
+    margin-top: 22px;
     font-size: 0.95rem;
     color: var(--charcoal-light);
-    line-height: 1.6;
+    line-height: 1.65;
 }
 
-/* Scorecard */
+/* ============================================
+   Scorecard
+   ============================================ */
 .factor-grid {
     display: grid;
     grid-template-columns: 1fr;
@@ -212,23 +385,23 @@ body {
 .factor-card {
     display: flex;
     align-items: center;
-    gap: 14px;
-    padding: 18px 16px;
-    border-radius: 14px;
-    background: var(--cream);
-    border: 1px solid transparent;
+    gap: 16px;
+    padding: 18px 18px 18px 20px;
+    border-radius: var(--radius-sm);
+    background: var(--card-bg);
+    box-shadow: var(--shadow-sm);
+    border-left: 5px solid var(--badge-grey);
     opacity: 0;
-    transform: translateY(12px);
-    animation: slideIn 0.4s ease forwards;
+    transform: translateY(14px);
+    animation: fadeUp 0.45s ease forwards;
 }
 
-.factor-card:nth-child(1) { animation-delay: 0.05s; }
-.factor-card:nth-child(2) { animation-delay: 0.12s; }
-.factor-card:nth-child(3) { animation-delay: 0.19s; }
-.factor-card:nth-child(4) { animation-delay: 0.26s; }
-.factor-card:nth-child(5) { animation-delay: 0.33s; }
+.factor-card.signal-green { border-left-color: var(--badge-green); }
+.factor-card.signal-yellow { border-left-color: var(--badge-yellow); }
+.factor-card.signal-red { border-left-color: var(--badge-red); }
+.factor-card.signal-grey { border-left-color: var(--badge-grey); }
 
-@keyframes slideIn {
+@keyframes fadeUp {
     to {
         opacity: 1;
         transform: translateY(0);
@@ -237,64 +410,67 @@ body {
 
 .factor-info {
     flex: 1;
+    min-width: 0;
 }
 
 .factor-name {
-    font-weight: 600;
-    font-size: 0.9rem;
+    font-weight: 700;
+    font-size: 0.95rem;
     color: var(--charcoal);
-    margin-bottom: 2px;
+    margin-bottom: 4px;
 }
 
 .factor-explanation {
     font-size: 0.85rem;
-    color: var(--charcoal-light);
-    line-height: 1.45;
+    color: var(--grey-text);
+    line-height: 1.5;
 }
 
+/* ============================================
+   Traffic-light pill badges
+   ============================================ */
 .badge {
     display: inline-flex;
     align-items: center;
     justify-content: center;
-    padding: 6px 14px;
+    padding: 6px 16px;
     border-radius: 999px;
-    font-size: 0.75rem;
-    font-weight: 600;
+    font-size: 0.72rem;
+    font-weight: 700;
     text-transform: uppercase;
-    letter-spacing: 0.4px;
+    letter-spacing: 0.5px;
     white-space: nowrap;
     flex-shrink: 0;
+    color: #fff;
 }
 
-.badge-green {
-    background: var(--green-bg);
-    color: var(--green);
+.badge-green { background: var(--badge-green); }
+.badge-yellow { background: var(--badge-yellow); }
+.badge-red { background: var(--badge-red); }
+.badge-grey { background: var(--badge-grey); }
+
+/* ============================================
+   One-sentence snapshot box
+   ============================================ */
+.snapshot-sentence-box {
+    background: var(--card-bg);
+    border-radius: var(--radius);
+    padding: 24px 26px;
+    border-left: 5px solid var(--terracotta);
+    box-shadow: var(--shadow-sm);
 }
 
-.badge-yellow {
-    background: var(--yellow-bg);
-    color: var(--yellow);
-}
-
-.badge-red {
-    background: var(--red-bg);
-    color: var(--red);
-}
-
-.badge-grey {
-    background: var(--grey-bg);
-    color: var(--grey-badge);
-}
-
-/* Snapshot sentence */
 .snapshot-sentence-text {
-    font-size: 1.05rem;
-    color: var(--charcoal-light);
-    line-height: 1.65;
+    font-size: 1.2rem;
+    color: var(--charcoal);
+    line-height: 1.6;
+    font-style: italic;
     font-weight: 500;
 }
 
-/* Risk flags */
+/* ============================================
+   Risk flags
+   ============================================ */
 .risk-list {
     list-style: none;
     display: flex;
@@ -309,26 +485,28 @@ body {
     font-size: 0.9rem;
     color: var(--charcoal-light);
     line-height: 1.5;
-    padding: 10px 12px;
-    background: var(--red-bg);
+    padding: 12px 14px;
+    background: #FDECEA;
     border-radius: 10px;
 }
 
 .risk-dot {
     width: 8px;
     height: 8px;
-    background: var(--red);
+    background: var(--badge-red);
     border-radius: 50%;
     margin-top: 7px;
     flex-shrink: 0;
 }
 
 .risk-label {
-    font-weight: 600;
+    font-weight: 700;
     color: var(--charcoal);
 }
 
-/* News */
+/* ============================================
+   News
+   ============================================ */
 .news-list {
     display: flex;
     flex-direction: column;
@@ -369,23 +547,42 @@ body {
     color: var(--grey-text);
 }
 
-/* Utilities */
-.hidden {
-    display: none !important;
-}
-
-/* Responsive */
+/* ============================================
+   Responsive
+   ============================================ */
 @media (min-width: 640px) {
     .container {
         padding: 60px 24px 100px;
     }
 
-    .factor-card {
-        padding: 20px 22px;
-        gap: 18px;
+    .company-name {
+        font-size: 2rem;
     }
 
-    .company-name {
-        font-size: 1.7rem;
+    .current-price {
+        font-size: 2.4rem;
+    }
+}
+
+@media (max-width: 540px) {
+    .hero-top {
+        flex-direction: column;
+    }
+
+    .price-block {
+        text-align: left;
+        margin-left: 0;
+    }
+
+    .search-box {
+        flex-direction: column;
+    }
+
+    #generateBtn {
+        width: 100%;
+    }
+
+    .chart-wrap {
+        height: 240px;
     }
 }

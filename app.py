@@ -485,6 +485,32 @@ def index():
     return render_template('index.html')
 
 
+@app.route('/api/history')
+def history_api():
+    ticker = request.args.get('ticker', '').strip().upper()
+    period = request.args.get('period', '3mo')
+    if not ticker:
+        return jsonify({'error': 'Missing ticker parameter.'}), 400
+    valid_periods = {'1mo', '3mo', '6mo', '1y'}
+    if period not in valid_periods:
+        period = '3mo'
+    try:
+        stock = yf.Ticker(ticker)
+        hist = stock.history(period=period)
+    except Exception:
+        return jsonify({'error': 'Unable to fetch historical prices from Yahoo Finance.'}), 500
+    if hist is None or hist.empty:
+        return jsonify({'error': 'No historical price data available for this ticker.'}), 404
+    dates = [d.strftime('%Y-%m-%d') for d in hist.index]
+    prices = [round(float(c), 2) for c in hist['Close']]
+    return jsonify({
+        'ticker': ticker,
+        'period': period,
+        'dates': dates,
+        'prices': prices
+    })
+
+
 @app.route('/api/stock/<ticker>')
 def stock_api(ticker):
     ticker = ticker.strip().upper()

@@ -7,50 +7,89 @@
     <link rel="stylesheet" href="/static/style.css">
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
 </head>
 <body>
     <div class="container">
-        <header class="header">
-            <h1 class="logo">StockBrief</h1>
-            <p class="tagline">Clear research briefs for everyday investors</p>
-        </header>
+        <!-- ============ Step 1: Minimal input view ============ -->
+        <section id="inputView" class="input-view">
+            <header class="header">
+                <h1 class="logo">StockBrief</h1>
+                <p class="tagline">Clear research briefs for everyday investors</p>
+            </header>
 
-        <section class="search-section">
             <div class="search-box">
-                <input type="text" id="tickerInput" placeholder="Enter a ticker (e.g. AAPL)" maxlength="10" autocomplete="off">
+                <input type="text" id="tickerInput" placeholder="Enter a ticker (e.g. AAPL)" maxlength="10" autocomplete="off" aria-label="Stock ticker">
                 <button id="generateBtn">Generate Brief</button>
             </div>
-            <p id="errorMsg" class="error-msg"></p>
+
+            <div class="quick-picks" role="group" aria-label="Quick pick tickers">
+                <button class="quick-pick" data-ticker="AAPL">AAPL</button>
+                <button class="quick-pick" data-ticker="NVDA">NVDA</button>
+                <button class="quick-pick" data-ticker="TSLA">TSLA</button>
+            </div>
+
+            <p id="errorMsg" class="error-msg" role="alert"></p>
         </section>
 
+        <!-- ============ Loading ============ -->
         <section id="loadingSection" class="loading-section hidden">
             <div class="spinner"></div>
             <p class="loading-text">Gathering data...</p>
         </section>
 
+        <!-- ============ Results ============ -->
         <main id="briefContent" class="brief-content hidden">
-            <section class="snapshot card">
-                <h2 class="company-name" id="companyName"></h2>
-                <p class="current-price" id="currentPrice"></p>
+            <button id="newSearchBtn" class="new-search" type="button">&larr; New search</button>
+
+            <!-- Hero -->
+            <section class="hero card">
+                <div class="hero-top">
+                    <div class="hero-id">
+                        <h2 class="company-name" id="companyName"></h2>
+                        <span class="ticker-symbol" id="tickerSymbol"></span>
+                    </div>
+                    <div class="price-block">
+                        <div class="current-price" id="currentPrice"></div>
+                        <div class="price-change" id="priceChange"></div>
+                    </div>
+                </div>
+
+                <div class="chart-block">
+                    <div class="chart-tabs" id="chartTabs" role="tablist" aria-label="Price chart period">
+                        <button class="chart-tab" data-period="1mo" type="button" role="tab">1M</button>
+                        <button class="chart-tab active" data-period="3mo" type="button" role="tab" aria-selected="true">3M</button>
+                        <button class="chart-tab" data-period="6mo" type="button" role="tab">6M</button>
+                        <button class="chart-tab" data-period="1y" type="button" role="tab">1Y</button>
+                    </div>
+                    <div class="chart-wrap">
+                        <canvas id="priceChart" aria-label="Historical price chart"></canvas>
+                    </div>
+                    <p class="chart-note" id="chartNote"></p>
+                </div>
+
                 <p class="snapshot-text" id="snapshotText"></p>
             </section>
 
+            <!-- Scorecard -->
             <section class="scorecard">
                 <h3 class="section-title">Five-Factor Scorecard</h3>
                 <div class="factor-grid" id="factorGrid"></div>
             </section>
 
-            <section class="snapshot-sentence card">
+            <!-- One-sentence snapshot -->
+            <section class="snapshot-sentence-box">
                 <h3 class="section-title">One-Sentence Snapshot</h3>
                 <p class="snapshot-sentence-text" id="snapshotSentence"></p>
             </section>
 
+            <!-- Risk flags -->
             <section class="risk-flags card" id="riskSection">
                 <h3 class="section-title">Risk Flags</h3>
                 <ul class="risk-list" id="riskList"></ul>
             </section>
 
+            <!-- News -->
             <section class="news card">
                 <h3 class="section-title">Recent News</h3>
                 <div class="news-list" id="newsList"></div>
@@ -58,6 +97,7 @@
         </main>
     </div>
 
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
     <script src="/static/app.js"></script>
 </body>
 </html>
