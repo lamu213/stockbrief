@@ -41,11 +41,14 @@ def groq_chat(system_prompt, user_prompt, max_tokens=200):
             },
             timeout=15
         )
+        print(f'GROQ status: {resp.status_code}')
         if resp.status_code != 200:
+            print(resp.text[:200])
             return None
         data = resp.json()
         return data['choices'][0]['message']['content'].strip()
-    except Exception:
+    except Exception as e:
+        print(f'GROQ error: {e}')
         return None
 
 
