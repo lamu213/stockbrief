@@ -658,7 +658,7 @@ def generate_news_analysis(headline, summary=''):
     return _rule_based_news_analysis(headline, summary)
 
 
-def fetch_news(ticker):
+def fetch_news(ticker, company_name=''):
     if not FINNHUB_API_KEY:
         return []
 
@@ -676,8 +676,30 @@ def fetch_news(ticker):
         articles = resp.json()
         if not isinstance(articles, list):
             return []
-        # Take the 5 most recent articles (Finnhub returns newest first)
-        recent = articles[:5]
+
+        # Build relevance search terms from ticker and company name,
+        # excluding common corporate suffix words that would match broadly.
+        corporate_stopwords = {
+            'inc', 'corp', 'corporation', 'company', 'co', 'ltd', 'llc',
+            'plc', 'group', 'holdings', 'the', 'and', 'of', 'sa', 'ag', 'nv'
+        }
+        search_terms = {ticker.lower()}
+        if company_name:
+            for part in company_name.split():
+                part = part.strip(',.')
+                if len(part) > 2 and part.lower() not in corporate_stopwords:
+                    search_terms.add(part.lower())
+
+        def is_relevant(article):
+            text = (
+                (article.get('headline') or '') + ' '
+                + (article.get('summary') or '')
+            ).lower()
+            return any(term in text for term in search_terms)
+
+        relevant = [a for a in articles if is_relevant(a)]
+        # Fallback to unfiltered if relevance filter removes everything
+        recent = relevant[:5] if relevant else articles[:5]
         results = []
         for a in recent:
             headline = a.get('headline', '')
@@ -740,13 +762,20 @@ def stock_api(ticker):
         return jsonify({'error': 'Unable to fetch stock data from Yahoo Finance. Please check the ticker.'}), 500
 
     company_name = info.get('longName') or info.get('shortName') or ticker
-    description = info.get('longBusinessSummary', '')
+    description = info.get('longBusinessSummary') or ''
     snapshot = ''
     if description:
-        sentence = description.split('. ')[0]
-        if sentence and not sentence.endswith('.'):
-            sentence += '.'
-        snapshot = sentence
+        # Split on sentence boundaries (period/!/? followed by whitespace).
+        # This avoids the common pitfall where "Apple Inc. designs..."
+        # splits on the period after "Inc" and yields just the company name.
+        sentences = re.split(r'(?<=[.!?])\s+', description)
+        snapshot = sentences[0]
+        # If the first fragment is too short (e.g. just "Apple Inc."), append
+        # the next sentence to produce a meaningful description.
+        if len(snapshot) < 60 and len(sentences) > 1:
+            snapshot = sentences[0] + ' ' + sentences[1]
+        if snapshot and not snapshot.endswith('.'):
+            snapshot += '.'
 
     current_price = info.get('currentPrice') or info.get('regularMarketPrice')
     pe_ratio = info.get('trailingPE')
@@ -812,7 +841,7 @@ def stock_api(ticker):
     next_earnings_days = earnings.get('raw')
     snapshot_sentence = generate_valuation_snapshot(company_name, factors, next_earnings_days)
     risk_flags = get_risk_explanations(factors)
-    news = fetch_news(ticker)
+    news = fetch_news(ticker, company_name)
 
     return jsonify({
         'ticker': ticker,
