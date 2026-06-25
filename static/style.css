@@ -419,10 +419,15 @@ body {
 }
 
 .snapshot-text {
-    margin-top: 22px;
-    font-size: 0.95rem;
-    color: var(--charcoal-light);
-    line-height: 1.65;
+    margin-top: 8px;
+    font-size: 0.82rem;
+    color: var(--grey-text);
+    line-height: 1.55;
+    font-weight: 400;
+}
+
+.snapshot-text.hidden {
+    display: none;
 }
 
 /* ============================================
@@ -490,6 +495,7 @@ body {
 .scorecard-body-row {
     border-bottom: 1px solid #F1EDE5;
     transition: background 0.15s;
+    cursor: pointer;
 }
 
 .scorecard-body-row:last-child {
@@ -498,6 +504,32 @@ body {
 
 .scorecard-body-row:hover {
     background: #FBF9F4;
+}
+
+.scorecard-body-row.expanded {
+    background: #FBF9F4;
+}
+
+/* Collapsed state: hide explanation and source */
+.scorecard-body-row.collapsed .factor-explanation,
+.scorecard-body-row.collapsed .source-label {
+    display: none;
+}
+
+/* Chevron */
+.chevron {
+    display: inline-block;
+    font-size: 1.1rem;
+    font-weight: 700;
+    color: var(--grey-soft);
+    transition: transform 0.2s;
+    width: 14px;
+    flex-shrink: 0;
+}
+
+.scorecard-body-row:not(.collapsed) .chevron {
+    transform: rotate(90deg);
+    color: var(--terracotta);
 }
 
 .scorecard-body-row td {

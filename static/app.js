@@ -275,17 +275,21 @@ document.addEventListener('DOMContentLoaded', () => {
         scorecardBody.innerHTML = '';
         factors.forEach((f, i) => {
             const tr = document.createElement('tr');
-            tr.className = `scorecard-body-row signal-${f.badge || 'grey'}`;
+            tr.className = `scorecard-body-row collapsed signal-${f.badge || 'grey'}`;
             tr.style.animationDelay = `${0.08 + i * 0.07}s`;
             tr.dataset.factorName = f.name;
 
             const isPe = f.name === 'P/E Ratio';
             const head = isPe
                 ? `<div class="factor-row-head">
+                       <span class="chevron" aria-hidden="true">&rsaquo;</span>
                        <span class="factor-name">${escapeHtml(f.name)}</span>
                        ${pePeriodSelect(f.years || currentPeYears)}
                    </div>`
-                : `<div class="factor-row-head"><span class="factor-name">${escapeHtml(f.name)}</span></div>`;
+                : `<div class="factor-row-head">
+                       <span class="chevron" aria-hidden="true">&rsaquo;</span>
+                       <span class="factor-name">${escapeHtml(f.name)}</span>
+                   </div>`;
 
             tr.innerHTML = `
                 <td>
@@ -300,7 +304,18 @@ document.addEventListener('DOMContentLoaded', () => {
             if (isPe) {
                 const select = tr.querySelector('.pe-period-select');
                 select.addEventListener('change', (e) => onPePeriodChange(e.target.value, tr));
+                select.addEventListener('click', (e) => e.stopPropagation());
             }
+        });
+
+        scorecardBody.querySelectorAll('.scorecard-body-row').forEach(row => {
+            row.addEventListener('click', () => {
+                const wasCollapsed = row.classList.contains('collapsed');
+                scorecardBody.querySelectorAll('.scorecard-body-row').forEach(r => r.classList.add('collapsed'));
+                if (wasCollapsed) {
+                    row.classList.remove('collapsed');
+                }
+            });
         });
     }
 
@@ -331,7 +346,9 @@ document.addEventListener('DOMContentLoaded', () => {
             if (sourceEl && data.source) sourceEl.textContent = data.source;
             if (badgeCell) badgeCell.innerHTML = renderBadge(a.badge, a.text);
 
-            rowEl.className = `scorecard-body-row pe-row-busy signal-${a.badge || 'grey'}`;
+            // Update the signal class without clobbering collapsed/expanded state
+            rowEl.classList.remove('signal-green', 'signal-yellow', 'signal-red', 'signal-grey');
+            rowEl.classList.add(`signal-${a.badge || 'grey'}`);
 
             // Keep currentFactors in sync for the compare feature
             const peFactor = currentFactors.find(f => f.name === 'P/E Ratio');
@@ -408,6 +425,13 @@ document.addEventListener('DOMContentLoaded', () => {
         }
 
         snapshotTextEl.textContent = stockData.snapshot || '';
+        const companyNameLower = (stockData.company_name || '').toLowerCase().trim();
+        const snapshotLower = (stockData.snapshot || '').toLowerCase().trim();
+        if (!snapshotLower || snapshotLower === companyNameLower) {
+            snapshotTextEl.classList.add('hidden');
+        } else {
+            snapshotTextEl.classList.remove('hidden');
+        }
 
         renderScorecard(stockData.factors || []);
 
