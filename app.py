@@ -11,6 +11,43 @@ import pandas as pd
 app = Flask(__name__)
 
 FINNHUB_API_KEY = os.environ.get('FINNHUB_API_KEY', '')
+GROQ_API_KEY = os.environ.get('GROQ_API_KEY', '')
+GROQ_API_URL = 'https://api.groq.com/openai/v1/chat/completions'
+GROQ_MODEL = 'llama3-8b-8192'
+
+
+# ============================================================================
+# Groq AI helper
+# ============================================================================
+
+def groq_chat(system_prompt, user_prompt, max_tokens=200):
+    """Call the Groq chat API and return the response text, or None on failure."""
+    if not GROQ_API_KEY:
+        return None
+    try:
+        resp = requests.post(
+            GROQ_API_URL,
+            headers={
+                'Authorization': f'Bearer {GROQ_API_KEY}',
+                'Content-Type': 'application/json'
+            },
+            json={
+                'model': GROQ_MODEL,
+                'messages': [
+                    {'role': 'system', 'content': system_prompt},
+                    {'role': 'user', 'content': user_prompt}
+                ],
+                'max_tokens': max_tokens
+            },
+            timeout=15
+        )
+        if resp.status_code != 200:
+            return None
+        data = resp.json()
+        return data['choices'][0]['message']['content'].strip()
+    except Exception:
+        return None
+
 
 # ============================================================================
 # Helpers
@@ -443,6 +480,24 @@ def generate_valuation_snapshot(company_name, factors, next_earnings_days):
         risk = "near-term earnings risk is limited"
 
     connector = "but" if earnings_badge in ('red', 'yellow') else "and"
+
+    system_prompt = (
+        "You are a concise equity research analyst. In exactly one sentence, "
+        "summarize a stock's valuation, technical momentum, and near-term earnings risk. "
+        "Plain English, no jargon, no disclaimers."
+    )
+    user_prompt = (
+        f"Company: {company_name}\n"
+        f"Valuation: {valuation}\n"
+        f"Technical: {technical}\n"
+        f"Earnings risk: {risk}\n"
+        f"Connector word: {connector}\n"
+        f"Write one sentence."
+    )
+    ai = groq_chat(system_prompt, user_prompt)
+    if ai:
+        return ai
+
     return f"{company_name} is trading at a {valuation} with {technical}, {connector} {risk}."
 
 
@@ -452,6 +507,18 @@ def get_risk_explanations(factors):
     explanations = []
     for f in red_factors:
         name = f['name']
+
+        system_prompt = (
+            "You are a concise equity research analyst. In one short sentence, explain "
+            "why this red risk signal matters to a retail investor. Plain English, no disclaimers."
+        )
+        raw = f.get('raw')
+        user_prompt = f"Factor: {name}\nBadge: red\nRaw value: {raw}\nWrite one sentence."
+        ai = groq_chat(system_prompt, user_prompt)
+        if ai:
+            explanations.append({'name': name, 'explanation': ai})
+            continue
+
         if name == 'P/E Ratio':
             explanations.append({
                 'name': name,
@@ -566,35 +633,23 @@ def _rule_based_news_analysis(headline, summary):
 def generate_news_analysis(headline, summary=''):
     """Generate a two-sentence AI analysis for a news item.
 
-    Uses the company's internal AI API when configured via the
-    AI_API_URL / AI_API_KEY environment variables, calling it with the
-    headline and summary as input. If no internal API is available (or the
-    call fails), falls back to a deterministic, rule-based keyword approach
-    so the feature always works.
+    Tries Groq first with the headline and summary as input. If Groq is
+    unavailable or returns None, falls back to a deterministic, rule-based
+    keyword approach so the feature always works.
     """
     headline = headline or ''
     summary = summary or ''
 
-    ai_url = os.environ.get('AI_API_URL')
-    if ai_url:
-        try:
-            headers = {'Content-Type': 'application/json'}
-            ai_key = os.environ.get('AI_API_KEY')
-            if ai_key:
-                headers['Authorization'] = f'Bearer {ai_key}'
-            resp = requests.post(
-                ai_url,
-                json={'headline': headline, 'summary': summary},
-                headers=headers,
-                timeout=10
-            )
-            if resp.status_code == 200:
-                data = resp.json()
-                analysis = (data.get('analysis') or data.get('text') or '').strip()
-                if analysis:
-                    return analysis
-        except Exception:
-            pass
+    system_prompt = (
+        "You are a concise equity research analyst. In exactly two sentences, "
+        "analyze a news item: sentence 1 states the key point in plain English, "
+        "sentence 2 states the likely stock price impact (positive, negative, or "
+        "neutral) and why. No disclaimers."
+    )
+    user_prompt = f"Headline: {headline}\nSummary: {summary}"
+    ai = groq_chat(system_prompt, user_prompt, max_tokens=200)
+    if ai:
+        return ai
 
     return _rule_based_news_analysis(headline, summary)
 
