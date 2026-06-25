@@ -1,5 +1,6 @@
 import os
 import math
+import re
 from datetime import datetime, timedelta
 from urllib.parse import urlparse
 from flask import Flask, render_template, jsonify, request
@@ -499,6 +500,105 @@ def get_risk_explanations(factors):
     return explanations
 
 
+def _rule_based_news_analysis(headline, summary):
+    """Generate a two-sentence analysis using keyword heuristics.
+
+    Sentence 1 states the key point of the news item in plain English;
+    sentence 2 describes the likely price impact (positive / negative /
+    neutral) and why. Keywords are matched on word boundaries to avoid
+    false positives (e.g. 'sues' inside 'issues', 'miss' inside 'mission').
+    """
+    combined = f"{headline}. {summary}".lower()
+
+    keyword_signals = [
+        (('beat', 'beats', 'surpass', 'surpasses', 'exceed', 'exceeds', 'tops',
+          'top estimates', 'beats estimates'),
+         "The company's latest results came in ahead of Wall Street's expectations.",
+         'positive'),
+        (('miss', 'misses', 'falls short', 'below estimates', 'misses estimates'),
+         "The company's latest results fell short of Wall Street's expectations.",
+         'negative'),
+        (('upgrade', 'upgraded', 'upgrades', 'raises rating', 'buy rating',
+          'overweight', 'bullish'),
+         "An analyst raised their rating on the stock, signaling greater confidence in the company's outlook.",
+         'positive'),
+        (('downgrade', 'downgraded', 'downgrades', 'cuts rating', 'sell rating',
+          'underweight', 'bearish'),
+         "An analyst lowered their rating on the stock, signaling reduced confidence in the company's outlook.",
+         'negative'),
+        (('partnership', 'partner', 'partners', 'collaboration', 'joint venture',
+          'teams up', 'agreement with'),
+         "The company announced a new partnership that could expand its market reach or capabilities.",
+         'positive'),
+        (('lawsuit', 'sue', 'sues', 'sued', 'legal action', 'class action', 'fraud',
+          'investigation', 'investigates', 'probe', 'probes', 'sec charges'),
+         "The company faces legal or regulatory action, which introduces uncertainty and potential financial exposure.",
+         'negative'),
+        (('recall', 'recalls', 'recalled'),
+         "The company announced a product recall, which may affect its operations, costs, and reputation.",
+         'negative'),
+    ]
+
+    def _matches(keywords):
+        return any(re.search(r'\b' + re.escape(k) + r'\b', combined) for k in keywords)
+
+    key_point = None
+    impact = 'neutral'
+    for keywords, point, direction in keyword_signals:
+        if _matches(keywords):
+            key_point = point
+            impact = direction
+            break
+
+    if key_point is None:
+        key_point = "The company announced news that may be relevant to investors."
+        impact = 'neutral'
+
+    impact_text = {
+        'positive': "This is a positive signal that could lift the stock price as it reflects improving fundamentals or sentiment.",
+        'negative': "This is a negative signal that could pressure the stock price as it raises concerns about the company's near-term prospects.",
+        'neutral': "The impact on the stock price is likely neutral, as the news is largely informational without a clear bullish or bearish catalyst.",
+    }[impact]
+
+    return f"{key_point} {impact_text}"
+
+
+def generate_news_analysis(headline, summary=''):
+    """Generate a two-sentence AI analysis for a news item.
+
+    Uses the company's internal AI API when configured via the
+    AI_API_URL / AI_API_KEY environment variables, calling it with the
+    headline and summary as input. If no internal API is available (or the
+    call fails), falls back to a deterministic, rule-based keyword approach
+    so the feature always works.
+    """
+    headline = headline or ''
+    summary = summary or ''
+
+    ai_url = os.environ.get('AI_API_URL')
+    if ai_url:
+        try:
+            headers = {'Content-Type': 'application/json'}
+            ai_key = os.environ.get('AI_API_KEY')
+            if ai_key:
+                headers['Authorization'] = f'Bearer {ai_key}'
+            resp = requests.post(
+                ai_url,
+                json={'headline': headline, 'summary': summary},
+                headers=headers,
+                timeout=10
+            )
+            if resp.status_code == 200:
+                data = resp.json()
+                analysis = (data.get('analysis') or data.get('text') or '').strip()
+                if analysis:
+                    return analysis
+        except Exception:
+            pass
+
+    return _rule_based_news_analysis(headline, summary)
+
+
 def fetch_news(ticker):
     if not FINNHUB_API_KEY:
         return []
@@ -517,16 +617,20 @@ def fetch_news(ticker):
         articles = resp.json()
         if not isinstance(articles, list):
             return []
-        # Take the 3 most recent articles (Finnhub returns newest first)
-        recent = articles[:3]
-        return [
-            {
-                'title': a.get('headline', ''),
+        # Take the 5 most recent articles (Finnhub returns newest first)
+        recent = articles[:5]
+        results = []
+        for a in recent:
+            headline = a.get('headline', '')
+            summary = a.get('summary', '')
+            results.append({
+                'title': headline,
                 'publishedAt': datetime.fromtimestamp(a.get('datetime', 0)).strftime('%Y-%m-%d'),
-                'url': a.get('url', '')
-            }
-            for a in recent
-        ]
+                'url': a.get('url', ''),
+                'source': a.get('source', '') or 'Finnhub',
+                'ai_analysis': generate_news_analysis(headline, summary)
+            })
+        return results
     except Exception:
         pass
     return []
@@ -547,7 +651,7 @@ def history_api():
     period = request.args.get('period', '3mo')
     if not ticker:
         return jsonify({'error': 'Missing ticker parameter.'}), 400
-    valid_periods = {'1mo', '3mo', '6mo', '1y'}
+    valid_periods = {'1mo', '3mo', '6mo', '1y', '5y', 'max'}
     if period not in valid_periods:
         period = '3mo'
     try:

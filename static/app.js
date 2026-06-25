@@ -360,9 +360,23 @@ document.addEventListener('DOMContentLoaded', () => {
                 const item = document.createElement('div');
                 item.className = 'news-item';
                 const published = n.publishedAt || '';
+                const source = n.source || 'Finnhub';
+                const analysis = n.ai_analysis || '';
+                const titleHtml = n.url
+                    ? `<a href="${escapeHtml(n.url)}" target="_blank" rel="noopener" class="news-title">${escapeHtml(n.title || '')}</a>`
+                    : `<span class="news-title">${escapeHtml(n.title || '')}</span>`;
+                const analysisHtml = analysis
+                    ? `<div class="ai-analysis-box">
+                           <span class="ai-analysis-label">AI Analysis</span>
+                           <p class="ai-analysis-text">${escapeHtml(analysis)}</p>
+                       </div>`
+                    : '';
                 item.innerHTML = `
-                    <a href="${escapeHtml(n.url || '#')}" target="_blank" rel="noopener" class="news-title">${escapeHtml(n.title || '')}</a>
-                    <span class="news-date">Source: Finnhub${published ? ' · Published: ' + escapeHtml(published) : ''}</span>
+                    <div class="news-left">
+                        ${titleHtml}
+                        <span class="news-date">${escapeHtml(source)}${published ? ' &middot; ' + escapeHtml(published) : ''}</span>
+                    </div>
+                    <div class="news-right">${analysisHtml}</div>
                 `;
                 newsList.appendChild(item);
             });

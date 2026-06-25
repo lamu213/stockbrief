@@ -426,24 +426,36 @@ body {
 }
 
 /* ============================================
-   Two-column analysis grid
+   Section 1: Full-width scorecard
    ============================================ */
-.analysis-grid {
-    display: grid;
-    grid-template-columns: 3fr 2fr;
-    gap: 24px;
-    align-items: start;
+.scorecard-section {
+    padding: 26px;
 }
 
-.analysis-left,
-.analysis-right {
-    min-width: 0;
-}
-
-.analysis-right {
+/* ============================================
+   Section 2: Causal separator
+   ============================================ */
+.causal-separator {
     display: flex;
     flex-direction: column;
-    gap: 16px;
+    align-items: center;
+    justify-content: center;
+    gap: 2px;
+    text-align: center;
+    padding: 2px 0;
+}
+
+.separator-arrow {
+    font-size: 1.15rem;
+    line-height: 1;
+    color: var(--terracotta);
+}
+
+.separator-text {
+    font-size: 0.78rem;
+    color: var(--grey-text);
+    font-style: italic;
+    letter-spacing: 0.2px;
 }
 
 /* ============================================
@@ -587,18 +599,18 @@ body {
 .badge-grey { background: var(--badge-grey); }
 
 /* ============================================
-   One-sentence snapshot box (right column)
+   Section 3: One-sentence snapshot box (full width, terracotta border)
    ============================================ */
 .snapshot-sentence-box {
     background: var(--card-bg);
     border-radius: var(--radius);
-    padding: 22px 24px;
-    border-left: 5px solid var(--terracotta);
+    padding: 28px 32px;
+    border: 2px solid var(--terracotta);
     box-shadow: var(--shadow-sm);
 }
 
 .snapshot-sentence-text {
-    font-size: 1.18rem;
+    font-size: 1.3rem;
     color: var(--charcoal);
     line-height: 1.55;
     font-style: italic;
@@ -652,7 +664,7 @@ body {
 }
 
 /* ============================================
-   News
+   News — headline (60%) + AI analysis (40%)
    ============================================ */
 .news-list {
     display: flex;
@@ -661,7 +673,10 @@ body {
 }
 
 .news-item {
-    padding: 14px 0;
+    display: flex;
+    align-items: flex-start;
+    gap: 20px;
+    padding: 16px 0;
     border-bottom: 1px solid #EFEBE3;
 }
 
@@ -669,9 +684,19 @@ body {
     border-bottom: none;
 }
 
+.news-left {
+    flex: 0 0 60%;
+    min-width: 0;
+}
+
+.news-right {
+    flex: 0 0 40%;
+    min-width: 0;
+}
+
 .news-title {
     font-size: 0.95rem;
-    font-weight: 500;
+    font-weight: 600;
     color: var(--charcoal);
     line-height: 1.45;
     text-decoration: none;
@@ -687,6 +712,29 @@ body {
 .news-date {
     font-size: 11px;
     color: var(--source-grey);
+}
+
+.ai-analysis-box {
+    background: #EFF1F4;
+    border-radius: 10px;
+    padding: 12px 14px;
+}
+
+.ai-analysis-label {
+    display: block;
+    font-size: 0.62rem;
+    font-weight: 700;
+    color: var(--grey-soft);
+    text-transform: uppercase;
+    letter-spacing: 0.9px;
+    margin-bottom: 6px;
+}
+
+.ai-analysis-text {
+    font-size: 0.82rem;
+    color: var(--charcoal-light);
+    line-height: 1.55;
+    font-style: italic;
 }
 
 .no-news {
@@ -854,12 +902,24 @@ body {
 }
 
 @media (max-width: 760px) {
-    .analysis-grid {
-        grid-template-columns: 1fr;
-    }
-
     .snapshot-sentence-text {
         font-size: 1.08rem;
+    }
+
+    .snapshot-sentence-box {
+        padding: 22px 20px;
+    }
+
+    /* News: stack headline + AI analysis on small screens */
+    .news-item {
+        flex-direction: column;
+        gap: 12px;
+    }
+
+    .news-left,
+    .news-right {
+        flex: 1 1 auto;
+        max-width: none;
     }
 }
 

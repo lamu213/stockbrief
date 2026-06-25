@@ -67,6 +67,8 @@
                         <button class="chart-tab active" data-period="3mo" type="button" role="tab" aria-selected="true">3M</button>
                         <button class="chart-tab" data-period="6mo" type="button" role="tab">6M</button>
                         <button class="chart-tab" data-period="1y" type="button" role="tab">1Y</button>
+                        <button class="chart-tab" data-period="5y" type="button" role="tab">5Y</button>
+                        <button class="chart-tab" data-period="max" type="button" role="tab">Max</button>
                     </div>
                     <div class="chart-wrap">
                         <canvas id="priceChart" aria-label="Historical price chart"></canvas>
@@ -77,34 +79,37 @@
                 <p class="snapshot-text" id="snapshotText"></p>
             </section>
 
-            <!-- ============ Two-column main analysis ============ -->
-            <section class="analysis-grid">
-                <!-- Left column (60%): Five-factor scorecard table -->
-                <div class="analysis-left card">
-                    <h3 class="section-title">Five-Factor Scorecard</h3>
-                    <div class="scorecard-table-wrap">
-                        <table class="scorecard-table">
-                            <thead>
-                                <tr>
-                                    <th scope="col">Factor</th>
-                                    <th scope="col">Signal</th>
-                                </tr>
-                            </thead>
-                            <tbody id="scorecardBody"></tbody>
-                        </table>
-                    </div>
+            <!-- ============ Section 1: Five-factor scorecard (full width) ============ -->
+            <section class="card scorecard-section">
+                <h3 class="section-title">Five-Factor Scorecard</h3>
+                <div class="scorecard-table-wrap">
+                    <table class="scorecard-table">
+                        <thead>
+                            <tr>
+                                <th scope="col">Factor</th>
+                                <th scope="col">Signal</th>
+                            </tr>
+                        </thead>
+                        <tbody id="scorecardBody"></tbody>
+                    </table>
                 </div>
+            </section>
 
-                <!-- Right column (40%): Snapshot + Risk flags -->
-                <div class="analysis-right">
-                    <div class="snapshot-sentence-box">
-                        <p class="snapshot-sentence-text" id="snapshotSentence"></p>
-                    </div>
-                    <div class="risk-flags card" id="riskSection">
-                        <h3 class="section-title">Risk Flags</h3>
-                        <ul class="risk-list" id="riskList"></ul>
-                    </div>
-                </div>
+            <!-- ============ Section 2: Causal separator ============ -->
+            <div class="causal-separator" role="separator" aria-label="Signals feed into the snapshot below">
+                <span class="separator-arrow" aria-hidden="true">&darr;</span>
+                <span class="separator-text">Based on the above signals:</span>
+            </div>
+
+            <!-- ============ Section 3: One-sentence snapshot (full width) ============ -->
+            <section class="snapshot-sentence-box">
+                <p class="snapshot-sentence-text" id="snapshotSentence"></p>
+            </section>
+
+            <!-- ============ Section 4: Risk flags (full width) ============ -->
+            <section class="risk-flags card" id="riskSection">
+                <h3 class="section-title">Risk Flags</h3>
+                <ul class="risk-list" id="riskList"></ul>
             </section>
 
             <!-- ============ News ============ -->
