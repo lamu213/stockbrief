@@ -677,40 +677,68 @@ def fetch_news(ticker, company_name=''):
         if not isinstance(articles, list):
             return []
 
-        # Build relevance search terms from ticker and company name,
-        # excluding common corporate suffix words that would match broadly.
+        # Extract the primary keyword: the first meaningful word of the
+        # company name, skipping common corporate suffix words.
         corporate_stopwords = {
             'inc', 'corp', 'corporation', 'company', 'co', 'ltd', 'llc',
             'plc', 'group', 'holdings', 'the', 'and', 'of', 'sa', 'ag', 'nv'
         }
-        search_terms = {ticker.lower()}
+        primary_keyword = ''
         if company_name:
             for part in company_name.split():
                 part = part.strip(',.')
                 if len(part) > 2 and part.lower() not in corporate_stopwords:
-                    search_terms.add(part.lower())
+                    primary_keyword = part.lower()
+                    break
+        # Search terms always include the ticker
+        search_terms = {ticker.lower()}
+        if primary_keyword:
+            search_terms.add(primary_keyword)
 
-        def is_relevant(article):
+        def headline_match(article):
+            headline = (article.get('headline') or '').lower()
+            return any(term in headline for term in search_terms)
+
+        def headline_plus_summary_match(article):
             text = (
                 (article.get('headline') or '') + ' '
                 + (article.get('summary') or '')
             ).lower()
-            return any(term in text for term in search_terms)
+            for term in search_terms:
+                if text.count(term) >= 2:
+                    return True
+            return False
 
-        relevant = [a for a in articles if is_relevant(a)]
-        # Fallback to unfiltered if relevance filter removes everything
-        recent = relevant[:5] if relevant else articles[:5]
+        # Tier 1: keyword or ticker appears in the headline
+        tier1 = [a for a in articles if headline_match(a)]
+        # Tier 2: keyword appears at least twice across headline + summary
+        tier2 = [a for a in articles if headline_plus_summary_match(a)]
+
+        if len(tier1) >= 2:
+            recent = tier1[:5]
+            unfiltered_fallback = False
+        elif tier2:
+            recent = tier2[:5]
+            unfiltered_fallback = False
+        else:
+            # No good matches — return top 3 unfiltered with a caveat
+            recent = articles[:3]
+            unfiltered_fallback = True
         results = []
         for a in recent:
             headline = a.get('headline', '')
             summary = a.get('summary', '')
+            source = a.get('source', '') or 'Finnhub'
             results.append({
                 'title': headline,
                 'publishedAt': datetime.fromtimestamp(a.get('datetime', 0)).strftime('%Y-%m-%d'),
                 'url': a.get('url', ''),
-                'source': a.get('source', '') or 'Finnhub',
+                'source': source,
                 'ai_analysis': generate_news_analysis(headline, summary)
             })
+        if unfiltered_fallback:
+            for r in results:
+                r['source'] = r['source'] + ' (news may not be directly related)'
         return results
     except Exception:
         pass
