@@ -25,6 +25,7 @@ def groq_chat(system_prompt, user_prompt, max_tokens=200):
     if not GROQ_API_KEY:
         return None
     try:
+        print(f"GROQ attempting call, key length: {len(GROQ_API_KEY)}")
         resp = requests.post(
             GROQ_API_URL,
             headers={
@@ -48,7 +49,7 @@ def groq_chat(system_prompt, user_prompt, max_tokens=200):
         data = resp.json()
         return data['choices'][0]['message']['content'].strip()
     except Exception as e:
-        print(f'GROQ error: {e}')
+        print(f"GROQ exception: {type(e).__name__}: {e}")
         return None
 
 
