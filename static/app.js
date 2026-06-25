@@ -7,12 +7,15 @@ document.addEventListener('DOMContentLoaded', () => {
     const inputView = document.getElementById('inputView');
     const newSearchBtn = document.getElementById('newSearchBtn');
 
+    const logoWrap = document.getElementById('logoWrap');
+    const companyLogo = document.getElementById('companyLogo');
+    const logoFallback = document.getElementById('logoFallback');
     const companyNameEl = document.getElementById('companyName');
     const tickerSymbolEl = document.getElementById('tickerSymbol');
     const currentPriceEl = document.getElementById('currentPrice');
     const priceChangeEl = document.getElementById('priceChange');
     const snapshotTextEl = document.getElementById('snapshotText');
-    const factorGrid = document.getElementById('factorGrid');
+    const scorecardBody = document.getElementById('scorecardBody');
     const snapshotSentenceEl = document.getElementById('snapshotSentence');
     const riskSection = document.getElementById('riskSection');
     const riskList = document.getElementById('riskList');
@@ -22,11 +25,19 @@ document.addEventListener('DOMContentLoaded', () => {
     const chartCanvas = document.getElementById('priceChart');
     const chartNote = document.getElementById('chartNote');
 
+    const compareForm = document.getElementById('compareForm');
+    const compareTickerInput = document.getElementById('compareTickerInput');
+    const compareBtn = document.getElementById('compareBtn');
+    const compareError = document.getElementById('compareError');
+    const compareResults = document.getElementById('compareResults');
+
     const COLOR_UP = '#C96442';   // terracotta
     const COLOR_DOWN = '#E53E3E'; // red
 
     let priceChart = null;
     let currentTicker = '';
+    let currentFactors = [];
+    let currentPeYears = 5;
 
     /* ---------- Helpers ---------- */
 
@@ -58,6 +69,16 @@ document.addEventListener('DOMContentLoaded', () => {
         const g = parseInt(h.substring(2, 4), 16);
         const b = parseInt(h.substring(4, 6), 16);
         return `rgba(${r}, ${g}, ${b}, ${alpha})`;
+    }
+
+    function escapeHtml(str) {
+        if (str == null) return '';
+        return String(str)
+            .replace(/&/g, '&amp;')
+            .replace(/</g, '&lt;')
+            .replace(/>/g, '&gt;')
+            .replace(/"/g, '&quot;')
+            .replace(/'/g, '&#39;');
     }
 
     /* Count-up animation for the current price */
@@ -92,7 +113,30 @@ document.addEventListener('DOMContentLoaded', () => {
 
     function renderBadge(badge, text) {
         const cls = `badge badge-${badge || 'grey'}`;
-        return `<span class="${cls}">${badgeLabel(badge, text)}</span>`;
+        return `<span class="${cls}">${escapeHtml(badgeLabel(badge, text))}</span>`;
+    }
+
+    /* ---------- Company logo ---------- */
+
+    function renderLogo(stockData) {
+        const domain = stockData.company_domain;
+        const firstLetter = (stockData.ticker || '').charAt(0).toUpperCase() || '?';
+        logoFallback.textContent = firstLetter;
+
+        const useFallback = () => {
+            logoWrap.classList.add('is-fallback');
+            companyLogo.removeAttribute('src');
+        };
+
+        if (domain) {
+            logoWrap.classList.remove('is-fallback');
+            companyLogo.alt = `${stockData.company_name || ''} logo`;
+            companyLogo.onerror = useFallback;
+            companyLogo.onload = () => logoWrap.classList.remove('is-fallback');
+            companyLogo.src = `https://logo.clearbit.com/${domain}`;
+        } else {
+            useFallback();
+        }
     }
 
     /* ---------- Chart ---------- */
@@ -217,10 +261,127 @@ document.addEventListener('DOMContentLoaded', () => {
         priceChangeEl.className = 'price-change ' + (change > 0 ? 'up' : change < 0 ? 'down' : 'flat');
     }
 
+    /* ---------- Scorecard table ---------- */
+
+    function pePeriodSelect(selected) {
+        const opts = [3, 5, 10].map(y => {
+            const isSel = y === selected ? 'selected' : '';
+            return `<option value="${y}" ${isSel}>${y}Y</option>`;
+        }).join('');
+        return `<select class="pe-period-select" aria-label="P/E historical average period">${opts}</select>`;
+    }
+
+    function renderScorecard(factors) {
+        scorecardBody.innerHTML = '';
+        factors.forEach((f, i) => {
+            const tr = document.createElement('tr');
+            tr.className = `scorecard-body-row signal-${f.badge || 'grey'}`;
+            tr.style.animationDelay = `${0.08 + i * 0.07}s`;
+            tr.dataset.factorName = f.name;
+
+            const isPe = f.name === 'P/E Ratio';
+            const head = isPe
+                ? `<div class="factor-row-head">
+                       <span class="factor-name">${escapeHtml(f.name)}</span>
+                       ${pePeriodSelect(f.years || currentPeYears)}
+                   </div>`
+                : `<div class="factor-row-head"><span class="factor-name">${escapeHtml(f.name)}</span></div>`;
+
+            tr.innerHTML = `
+                <td>
+                    ${head}
+                    <div class="factor-explanation">${f.explanation || 'No explanation available.'}</div>
+                    ${f.source ? `<span class="source-label">${escapeHtml(f.source)}</span>` : ''}
+                </td>
+                <td>${renderBadge(f.badge, f.text)}</td>
+            `;
+            scorecardBody.appendChild(tr);
+
+            if (isPe) {
+                const select = tr.querySelector('.pe-period-select');
+                select.addEventListener('change', (e) => onPePeriodChange(e.target.value, tr));
+            }
+        });
+    }
+
+    /* ---------- P/E period change ---------- */
+
+    async function onPePeriodChange(yearsStr, rowEl) {
+        const years = parseInt(yearsStr, 10);
+        if (!currentTicker || !years) return;
+        currentPeYears = years;
+        const select = rowEl.querySelector('.pe-period-select');
+        if (select) select.disabled = true;
+        rowEl.classList.add('pe-row-busy');
+
+        try {
+            const resp = await fetch(`/api/pe-history?ticker=${encodeURIComponent(currentTicker)}&years=${years}`);
+            const data = await resp.json();
+            if (!resp.ok || !data.assessment) {
+                if (select) select.disabled = false;
+                rowEl.classList.remove('pe-row-busy');
+                return;
+            }
+            const a = data.assessment;
+            const explEl = rowEl.querySelector('.factor-explanation');
+            const sourceEl = rowEl.querySelector('.source-label');
+            const badgeCell = rowEl.querySelector('td:last-child');
+
+            if (explEl) explEl.innerHTML = a.explanation || 'No explanation available.';
+            if (sourceEl && data.source) sourceEl.textContent = data.source;
+            if (badgeCell) badgeCell.innerHTML = renderBadge(a.badge, a.text);
+
+            rowEl.className = `scorecard-body-row pe-row-busy signal-${a.badge || 'grey'}`;
+
+            // Keep currentFactors in sync for the compare feature
+            const peFactor = currentFactors.find(f => f.name === 'P/E Ratio');
+            if (peFactor) {
+                peFactor.badge = a.badge;
+                peFactor.text = a.text;
+                peFactor.explanation = a.explanation;
+                peFactor.years = years;
+                peFactor.source = data.source;
+            }
+            refreshCompareIfVisible();
+        } catch (err) {
+            // silently leave previous values
+        } finally {
+            if (select) select.disabled = false;
+            rowEl.classList.remove('pe-row-busy');
+        }
+    }
+
+    /* ---------- News ---------- */
+
+    function renderNews(news) {
+        newsList.innerHTML = '';
+        if (news && news.length > 0) {
+            news.forEach(n => {
+                const item = document.createElement('div');
+                item.className = 'news-item';
+                const published = n.publishedAt || '';
+                item.innerHTML = `
+                    <a href="${escapeHtml(n.url || '#')}" target="_blank" rel="noopener" class="news-title">${escapeHtml(n.title || '')}</a>
+                    <span class="news-date">Source: Finnhub${published ? ' · Published: ' + escapeHtml(published) : ''}</span>
+                `;
+                newsList.appendChild(item);
+            });
+        } else {
+            newsList.innerHTML = '<p class="no-news">No recent news found.</p>';
+        }
+    }
+
     /* ---------- Render brief ---------- */
 
     function renderBrief(stockData) {
         currentTicker = stockData.ticker;
+        currentFactors = (stockData.factors || []).map(f => ({ ...f }));
+        currentPeYears = 5;
+        compareResults.innerHTML = '';
+        compareError.textContent = '';
+        compareTickerInput.value = '';
+
+        renderLogo(stockData);
 
         companyNameEl.textContent = stockData.company_name || stockData.ticker;
         tickerSymbolEl.textContent = stockData.ticker;
@@ -234,21 +395,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
         snapshotTextEl.textContent = stockData.snapshot || '';
 
-        /* Scorecard cards */
-        factorGrid.innerHTML = '';
-        (stockData.factors || []).forEach((f, i) => {
-            const card = document.createElement('div');
-            card.className = `factor-card signal-${f.badge || 'grey'}`;
-            card.style.animationDelay = `${0.08 + i * 0.09}s`;
-            card.innerHTML = `
-                <div class="factor-info">
-                    <div class="factor-name">${f.name}</div>
-                    <div class="factor-explanation">${f.explanation || 'No explanation available.'}</div>
-                </div>
-                ${renderBadge(f.badge, f.text)}
-            `;
-            factorGrid.appendChild(card);
-        });
+        renderScorecard(stockData.factors || []);
 
         /* One-sentence snapshot */
         snapshotSentenceEl.textContent = stockData.snapshot_sentence || '';
@@ -262,29 +409,17 @@ document.addEventListener('DOMContentLoaded', () => {
                 li.className = 'risk-item';
                 li.innerHTML = `
                     <span class="risk-dot"></span>
-                    <span><span class="risk-label">${flag.name}:</span> ${flag.explanation}</span>
+                    <span><span class="risk-label">${escapeHtml(flag.name)}:</span> ${escapeHtml(flag.explanation)}</span>
                 `;
                 riskList.appendChild(li);
             });
         } else {
-            riskSection.classList.add('hidden');
+            riskSection.classList.remove('hidden');
+            riskList.innerHTML = '<li class="risk-empty">No major risk flags detected across the five factors.</li>';
         }
 
         /* News */
-        newsList.innerHTML = '';
-        if (stockData.news && stockData.news.length > 0) {
-            stockData.news.forEach(n => {
-                const item = document.createElement('div');
-                item.className = 'news-item';
-                item.innerHTML = `
-                    <a href="${n.url || '#'}" target="_blank" rel="noopener" class="news-title">${n.title}</a>
-                    <span class="news-date">${n.publishedAt || ''}</span>
-                `;
-                newsList.appendChild(item);
-            });
-        } else {
-            newsList.innerHTML = '<p class="no-news">No recent news found.</p>';
-        }
+        renderNews(stockData.news || []);
 
         /* Reset tabs to default 3M */
         chartTabs.querySelectorAll('.chart-tab').forEach(t => {
@@ -349,6 +484,106 @@ document.addEventListener('DOMContentLoaded', () => {
         window.scrollTo({ top: 0, behavior: 'smooth' });
     }
 
+    /* ---------- Compare feature ---------- */
+
+    function refreshCompareIfVisible() {
+        if (compareResults.querySelector('.compare-table')) {
+            renderCompareTable();
+        }
+    }
+
+    function renderCompareTable(stockBData) {
+        // If called without stockBData, re-render using last compared ticker stored on the section
+        let factorsB = null;
+        let tickerB = '';
+        if (stockBData) {
+            factorsB = (stockBData.factors || []).map(f => ({ ...f }));
+            tickerB = stockBData.ticker;
+            compareResults.dataset.tickerB = tickerB;
+            compareResults.dataset.factorsB = JSON.stringify(factorsB);
+        } else {
+            tickerB = compareResults.dataset.tickerB || '';
+            try {
+                factorsB = JSON.parse(compareResults.dataset.factorsB || '[]');
+            } catch (e) {
+                factorsB = [];
+            }
+        }
+
+        if (!factorsB || factorsB.length === 0) return;
+
+        const factorsA = currentFactors;
+        const tickerA = currentTicker || 'Stock A';
+
+        const factorOrder = ['P/E Ratio', 'Analyst Price Target', 'PEG Ratio', 'RSI (14-day)', 'Earnings Date'];
+        const findFactor = (arr, name) => arr.find(f => f.name === name);
+
+        const rows = factorOrder.map(name => {
+            const a = findFactor(factorsA, name) || {};
+            const b = findFactor(factorsB, name) || {};
+            return `
+                <tr>
+                    <td class="compare-factor-name">${escapeHtml(name)}</td>
+                    <td>${renderBadge(a.badge, a.text)}</td>
+                    <td>${renderBadge(b.badge, b.text)}</td>
+                </tr>
+            `;
+        }).join('');
+
+        compareResults.innerHTML = `
+            <div class="compare-table-wrap">
+                <table class="compare-table">
+                    <thead>
+                        <tr>
+                            <th>Factor</th>
+                            <th><span class="compare-ticker">${escapeHtml(tickerA)}</span></th>
+                            <th><span class="compare-ticker">${escapeHtml(tickerB)}</span></th>
+                        </tr>
+                    </thead>
+                    <tbody>${rows}</tbody>
+                </table>
+            </div>
+        `;
+    }
+
+    async function runCompare(event) {
+        if (event) event.preventDefault();
+        compareError.textContent = '';
+
+        const tickerB = compareTickerInput.value.trim();
+        if (!tickerB) {
+            compareError.textContent = 'Please enter a second ticker.';
+            return;
+        }
+        if (!/^[A-Za-z0-9.-]+$/.test(tickerB)) {
+            compareError.textContent = 'Please enter a valid ticker symbol.';
+            return;
+        }
+        if (tickerB.toUpperCase() === currentTicker.toUpperCase()) {
+            compareError.textContent = 'Please enter a different ticker to compare.';
+            return;
+        }
+
+        compareBtn.disabled = true;
+        compareResults.innerHTML = '<p class="compare-loading">Loading comparison…</p>';
+
+        try {
+            const resp = await fetch(`/api/stock/${encodeURIComponent(tickerB)}`);
+            const data = await resp.json();
+            if (!resp.ok) {
+                compareResults.innerHTML = '';
+                compareError.textContent = data.error || 'Unable to fetch data for that ticker.';
+                return;
+            }
+            renderCompareTable(data);
+        } catch (err) {
+            compareResults.innerHTML = '';
+            compareError.textContent = 'Network error. Please try again.';
+        } finally {
+            compareBtn.disabled = false;
+        }
+    }
+
     /* ---------- Events ---------- */
 
     generateBtn.addEventListener('click', () => generateBrief());
@@ -379,6 +614,8 @@ document.addEventListener('DOMContentLoaded', () => {
     });
 
     newSearchBtn.addEventListener('click', backToInput);
+
+    compareForm.addEventListener('submit', runCompare);
 
     tickerInput.focus();
 });

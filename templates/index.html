@@ -46,8 +46,14 @@
             <section class="hero card">
                 <div class="hero-top">
                     <div class="hero-id">
-                        <h2 class="company-name" id="companyName"></h2>
-                        <span class="ticker-symbol" id="tickerSymbol"></span>
+                        <div class="logo-wrap" id="logoWrap">
+                            <img id="companyLogo" class="company-logo" alt="" />
+                            <span class="logo-fallback" id="logoFallback"></span>
+                        </div>
+                        <div class="hero-text">
+                            <h2 class="company-name" id="companyName"></h2>
+                            <span class="ticker-symbol" id="tickerSymbol"></span>
+                        </div>
                     </div>
                     <div class="price-block">
                         <div class="current-price" id="currentPrice"></div>
@@ -71,28 +77,51 @@
                 <p class="snapshot-text" id="snapshotText"></p>
             </section>
 
-            <!-- Scorecard -->
-            <section class="scorecard">
-                <h3 class="section-title">Five-Factor Scorecard</h3>
-                <div class="factor-grid" id="factorGrid"></div>
+            <!-- ============ Two-column main analysis ============ -->
+            <section class="analysis-grid">
+                <!-- Left column (60%): Five-factor scorecard table -->
+                <div class="analysis-left card">
+                    <h3 class="section-title">Five-Factor Scorecard</h3>
+                    <div class="scorecard-table-wrap">
+                        <table class="scorecard-table">
+                            <thead>
+                                <tr>
+                                    <th scope="col">Factor</th>
+                                    <th scope="col">Signal</th>
+                                </tr>
+                            </thead>
+                            <tbody id="scorecardBody"></tbody>
+                        </table>
+                    </div>
+                </div>
+
+                <!-- Right column (40%): Snapshot + Risk flags -->
+                <div class="analysis-right">
+                    <div class="snapshot-sentence-box">
+                        <p class="snapshot-sentence-text" id="snapshotSentence"></p>
+                    </div>
+                    <div class="risk-flags card" id="riskSection">
+                        <h3 class="section-title">Risk Flags</h3>
+                        <ul class="risk-list" id="riskList"></ul>
+                    </div>
+                </div>
             </section>
 
-            <!-- One-sentence snapshot -->
-            <section class="snapshot-sentence-box">
-                <h3 class="section-title">One-Sentence Snapshot</h3>
-                <p class="snapshot-sentence-text" id="snapshotSentence"></p>
-            </section>
-
-            <!-- Risk flags -->
-            <section class="risk-flags card" id="riskSection">
-                <h3 class="section-title">Risk Flags</h3>
-                <ul class="risk-list" id="riskList"></ul>
-            </section>
-
-            <!-- News -->
+            <!-- ============ News ============ -->
             <section class="news card">
                 <h3 class="section-title">Recent News</h3>
                 <div class="news-list" id="newsList"></div>
+            </section>
+
+            <!-- ============ Compare two stocks ============ -->
+            <section class="compare-section" id="compareSection">
+                <h3 class="section-title">Compare with another stock</h3>
+                <form class="compare-form" id="compareForm">
+                    <input type="text" id="compareTickerInput" placeholder="Enter a second ticker (e.g. MSFT)" maxlength="10" autocomplete="off" aria-label="Second stock ticker">
+                    <button type="submit" id="compareBtn">Compare</button>
+                </form>
+                <p id="compareError" class="compare-error" role="alert"></p>
+                <div id="compareResults"></div>
             </section>
         </main>
     </div>

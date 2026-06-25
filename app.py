@@ -1,6 +1,7 @@
 import os
 import math
 from datetime import datetime, timedelta
+from urllib.parse import urlparse
 from flask import Flask, render_template, jsonify, request
 import yfinance as yf
 import requests
@@ -53,80 +54,132 @@ def _get_financial_data(stock):
     return income, balance
 
 
-def compute_historical_pe(stock):
-    """Try to compute the average trailing P/E over the last ~5 years from quarterly data."""
+def _get_annual_financial_data(stock):
+    """Robustly fetch annual income stmt and balance sheet across yfinance versions."""
+    income = None
+    for attr in ['income_stmt', 'income_statement', 'financials']:
+        if hasattr(stock, attr):
+            val = getattr(stock, attr)
+            if val is not None and not val.empty:
+                income = val
+                break
+
+    balance = None
+    for attr in ['balance_sheet', 'balancesheet']:
+        if hasattr(stock, attr):
+            val = getattr(stock, attr)
+            if val is not None and not val.empty:
+                balance = val
+                break
+
+    return income, balance
+
+
+def _find_net_income_row(income):
+    """Locate the Net Income row in an income statement DataFrame."""
+    if income is None:
+        return None
+    for key in income.index:
+        if 'NetIncome' in key or 'Net Income' in key:
+            return income.loc[key]
+    return None
+
+
+def _find_shares_row(balance):
+    """Locate the shares outstanding row in a balance sheet DataFrame."""
+    if balance is None:
+        return None
+    for key in balance.index:
+        if 'Share' in key and 'Equity' not in key:
+            return balance.loc[key]
+    for key in balance.index:
+        lower = key.lower()
+        if 'common stock' in lower or 'shares' in lower or 'stockholders' in lower:
+            if 'equity' in lower and 'common' not in lower:
+                continue
+            return balance.loc[key]
+    return None
+
+
+def _collect_eps_points(income, balance, annualize):
+    """Return list of (date, annualized_eps) tuples from income/balance statements."""
+    if income is None or balance is None:
+        return []
+    net_income_row = _find_net_income_row(income)
+    shares_row = _find_shares_row(balance)
+    if net_income_row is None or shares_row is None:
+        return []
+    points = []
+    multiplier = 4 if annualize else 1
+    for date in net_income_row.index:
+        if date in shares_row.index:
+            ni = net_income_row[date]
+            sh = shares_row[date]
+            if pd.notna(ni) and pd.notna(sh) and sh != 0:
+                eps = (ni / sh) * multiplier
+                if pd.notna(eps):
+                    points.append((date, eps))
+    return points
+
+
+def extract_domain(url):
+    """Extract the registered domain from a URL."""
+    if not url:
+        return ''
+    url = url.strip()
+    if '://' not in url:
+        url = 'http://' + url
+    netloc = urlparse(url).netloc.lower()
+    if netloc.startswith('www.'):
+        netloc = netloc[4:]
+    return netloc
+
+
+def compute_historical_pe(stock, years=5):
+    """Compute average trailing P/E over the last `years` years from financial statements."""
     try:
-        income, balance = _get_financial_data(stock)
-        if income is None or balance is None:
+        annual_income, annual_balance = _get_annual_financial_data(stock)
+        quarterly_income, quarterly_balance = _get_financial_data(stock)
+
+        eps_points = []
+        eps_points.extend(_collect_eps_points(annual_income, annual_balance, annualize=False))
+        eps_points.extend(_collect_eps_points(quarterly_income, quarterly_balance, annualize=True))
+
+        if len(eps_points) < 4:
             return None
 
-        # --- Find Net Income row ---
-        net_income_row = None
-        for key in income.index:
-            if 'NetIncome' in key or 'Net Income' in key:
-                net_income_row = income.loc[key]
-                break
-        if net_income_row is None:
-            return None
-
-        # --- Find Shares Outstanding row ---
-        shares_row = None
-        for key in balance.index:
-            if 'Share' in key and 'Equity' not in key:
-                shares_row = balance.loc[key]
-                break
-        if shares_row is None:
-            # Fallback: try any row that looks like share count
-            for key in balance.index:
-                lower = key.lower()
-                if 'common stock' in lower or 'shares' in lower or 'stockholders' in lower:
-                    if 'equity' in lower and 'common' not in lower:
-                        continue
-                    shares_row = balance.loc[key]
-                    break
-        if shares_row is None:
-            return None
-
-        # Build EPS series
-        eps_data = []
-        for date in net_income_row.index:
-            if date in shares_row.index:
-                ni = net_income_row[date]
-                sh = shares_row[date]
-                if pd.notna(ni) and pd.notna(sh) and sh != 0:
-                    eps = ni / sh
-                    eps_data.append((date, eps))
-
-        if len(eps_data) < 4:
-            return None
-
-        hist = stock.history(period='5y')
+        hist = stock.history(period=f'{years}y')
         if hist.empty:
             return None
 
-        # Ensure timezone-naive index for comparison with statement dates
         hist_close = hist['Close'].copy()
         if hist_close.index.tz is not None:
             hist_close.index = hist_close.index.tz_localize(None)
 
+        cutoff = datetime.now() - timedelta(days=years * 365)
+        seen_months = set()
         pe_values = []
-        for date, eps in eps_data:
+
+        for date, eps in eps_points:
             if eps <= 0:
                 continue
             try:
-                # Ensure date is timezone-naive
                 query_date = date.tz_localize(None) if hasattr(date, 'tz') and date.tz else date
+                if query_date < cutoff:
+                    continue
+                month_key = query_date.strftime('%Y-%m')
+                if month_key in seen_months:
+                    continue
                 price = hist_close.asof(query_date)
                 if pd.notna(price) and price > 0:
-                    # Annualize quarterly EPS for a proper P/E comparison
-                    annualized_eps = eps * 4
-                    pe = price / annualized_eps
-                    if pe > 0 and not math.isinf(pe) and pe < 500:  # sanity cap
+                    pe = price / eps
+                    if pe > 0 and not math.isinf(pe) and pe < 500:
                         pe_values.append(pe)
+                        seen_months.add(month_key)
             except Exception:
                 continue
 
-        if len(pe_values) < 4:
+        if len(pe_values) < 2:
             return None
 
         return sum(pe_values) / len(pe_values)
@@ -143,7 +196,7 @@ def try_get_industry_pe(info):
     return None
 
 
-def get_pe_assessment(current_pe, historical_pe, industry_pe):
+def get_pe_assessment(current_pe, historical_pe, industry_pe, years=5):
     if current_pe is None or math.isnan(current_pe):
         return {
             'badge': 'grey',
@@ -154,6 +207,9 @@ def get_pe_assessment(current_pe, historical_pe, industry_pe):
 
     def _fmt(v):
         return f"{v:.1f}"
+
+    def _yrs():
+        return f"<strong>{years}-year</strong>"
 
     below_hist = False
     above_hist = False
@@ -180,38 +236,38 @@ def get_pe_assessment(current_pe, historical_pe, industry_pe):
         if below_hist and below_ind:
             badge = 'green'
             explanation = (
-                f"P/E of {_fmt(current_pe)} is below both its 5-year average ({_fmt(historical_pe)}) "
+                f"P/E of {_fmt(current_pe)} is below both its {_yrs()} average ({_fmt(historical_pe)}) "
                 f"and the industry average ({_fmt(industry_pe)}), suggesting potential undervaluation."
             )
         elif above_hist and above_ind:
             badge = 'red'
             explanation = (
-                f"P/E of {_fmt(current_pe)} is above both its 5-year average ({_fmt(historical_pe)}) "
+                f"P/E of {_fmt(current_pe)} is above both its {_yrs()} average ({_fmt(historical_pe)}) "
                 f"and the industry average ({_fmt(industry_pe)}), indicating a potentially expensive valuation."
             )
         else:
             badge = 'yellow'
             if above_hist:
                 explanation = (
-                    f"P/E of {_fmt(current_pe)} is above its 5-year average ({_fmt(historical_pe)}) "
+                    f"P/E of {_fmt(current_pe)} is above its {_yrs()} average ({_fmt(historical_pe)}) "
                     f"but below the industry average ({_fmt(industry_pe)}), showing mixed signals."
                 )
             else:
                 explanation = (
-                    f"P/E of {_fmt(current_pe)} is below its 5-year average ({_fmt(historical_pe)}) "
+                    f"P/E of {_fmt(current_pe)} is below its {_yrs()} average ({_fmt(historical_pe)}) "
                     f"but above the industry average ({_fmt(industry_pe)}), showing mixed signals."
                 )
     elif historical_pe is not None:
         if below_hist:
             badge = 'green'
             explanation = (
-                f"P/E of {_fmt(current_pe)} is below its 5-year average of {_fmt(historical_pe)}. "
+                f"P/E of {_fmt(current_pe)} is below its {_yrs()} average of {_fmt(historical_pe)}. "
                 f"(Industry data unavailable.)"
             )
         else:
             badge = 'red'
             explanation = (
-                f"P/E of {_fmt(current_pe)} is above its 5-year average of {_fmt(historical_pe)}. "
+                f"P/E of {_fmt(current_pe)} is above its {_yrs()} average of {_fmt(historical_pe)}. "
                 f"(Industry data unavailable.)"
             )
     else:  # only industry_pe
@@ -534,6 +590,11 @@ def stock_api(ticker):
     peg_ratio = info.get('pegRatio')
     target_mean = info.get('targetMeanPrice')
 
+    website = info.get('website') or ''
+    company_domain = extract_domain(website) if website else ''
+    num_analysts = info.get('numberOfAnalystOpinions')
+    as_of = datetime.now().strftime('%Y-%m-%d')
+
     historical_pe = compute_historical_pe(stock)
     industry_pe = try_get_industry_pe(info)
 
@@ -562,18 +623,27 @@ def stock_api(ticker):
 
     rsi = calculate_rsi(stock)
 
-    pe = get_pe_assessment(pe_ratio, historical_pe, industry_pe)
+    pe = get_pe_assessment(pe_ratio, historical_pe, industry_pe, years=5)
     analyst = get_analyst_assessment(target_mean, current_price)
     peg = get_peg_assessment(peg_ratio)
     rsi_data = get_rsi_assessment(rsi)
     earnings = get_earnings_assessment(next_earnings_date_str)
 
+    pe_source = f'Source: Yahoo Finance · 5-year historical average · as of {as_of}'
+    analyst_source = 'Source: Yahoo Finance analyst consensus'
+    if num_analysts:
+        analyst_source += f' · {num_analysts} analysts'
+    analyst_source += f' · as of {as_of}'
+    peg_source = f'Source: Yahoo Finance · as of {as_of}'
+    rsi_source = f'Calculated from 14-day closing prices · Yahoo Finance · as of {as_of}'
+    earnings_source = f'Source: Yahoo Finance · as of {as_of}'
+
     factors = [
-        {'name': 'P/E Ratio', **pe},
-        {'name': 'Analyst Price Target', **analyst},
-        {'name': 'PEG Ratio', **peg},
-        {'name': 'RSI (14-day)', **rsi_data},
-        {'name': 'Earnings Date', **earnings}
+        {'name': 'P/E Ratio', 'source': pe_source, 'years': 5, **pe},
+        {'name': 'Analyst Price Target', 'source': analyst_source, **analyst},
+        {'name': 'PEG Ratio', 'source': peg_source, **peg},
+        {'name': 'RSI (14-day)', 'source': rsi_source, **rsi_data},
+        {'name': 'Earnings Date', 'source': earnings_source, **earnings}
     ]
 
     next_earnings_days = earnings.get('raw')
@@ -584,12 +654,50 @@ def stock_api(ticker):
     return jsonify({
         'ticker': ticker,
         'company_name': company_name,
+        'company_domain': company_domain,
         'current_price': current_price,
         'snapshot': snapshot,
         'factors': factors,
         'snapshot_sentence': snapshot_sentence,
         'risk_flags': risk_flags,
-        'news': news
+        'news': news,
+        'as_of': as_of
+    })
+
+
+@app.route('/api/pe-history')
+def pe_history_api():
+    ticker = request.args.get('ticker', '').strip().upper()
+    years_str = request.args.get('years', '5').strip()
+    if not ticker:
+        return jsonify({'error': 'Missing ticker parameter.'}), 400
+    try:
+        years = int(years_str)
+    except (ValueError, TypeError):
+        years = 5
+    if years not in (3, 5, 10):
+        years = 5
+    try:
+        stock = yf.Ticker(ticker)
+        info = stock.info
+    except Exception:
+        return jsonify({'error': 'Unable to fetch stock data from Yahoo Finance. Please check the ticker.'}), 500
+
+    current_pe = info.get('trailingPE')
+    historical_pe = compute_historical_pe(stock, years=years)
+    industry_pe = try_get_industry_pe(info)
+    assessment = get_pe_assessment(current_pe, historical_pe, industry_pe, years=years)
+    as_of = datetime.now().strftime('%Y-%m-%d')
+
+    return jsonify({
+        'ticker': ticker,
+        'years': years,
+        'current_pe': current_pe,
+        'historical_pe': historical_pe,
+        'industry_pe': industry_pe,
+        'as_of': as_of,
+        'assessment': assessment,
+        'source': f'Source: Yahoo Finance · {years}-year historical average · as of {as_of}'
     })
 
 
