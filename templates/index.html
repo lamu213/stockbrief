@@ -79,6 +79,8 @@
                     <li><button class="drawer-item" data-view="news">News</button></li>
                     <li><button class="drawer-item" data-view="chat">Ask AI</button></li>
                     <li><button class="drawer-item" data-view="compare">Compare</button></li>
+                    <li class="drawer-divider"></li>
+                    <li><button class="drawer-item" data-view="watchlist">Watchlist</button></li>
                 </ul>
             </nav>
 
@@ -194,6 +196,14 @@
                     </form>
                     <p id="compareError" class="compare-error" role="alert"></p>
                     <div id="compareResults"></div>
+                </section>
+            </section>
+
+            <!-- View: Watchlist -->
+            <section class="view view-watchlist" id="view-watchlist">
+                <section class="card">
+                    <h3 class="section-title">Watchlist</h3>
+                    <div id="watchlistContent"></div>
                 </section>
             </section>
         </main>

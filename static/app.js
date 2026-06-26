@@ -815,7 +815,45 @@ document.addEventListener('DOMContentLoaded', () => {
         drawerItems.forEach(item => {
             item.classList.toggle('active', item.dataset.view === viewName);
         });
+        if (viewName === 'watchlist') loadWatchlist();
         window.scrollTo({ top: 0, behavior: 'smooth' });
+    }
+
+    /* ---------- Watchlist view ---------- */
+
+    async function loadWatchlist() {
+        const content = document.getElementById('watchlistContent');
+        if (!currentUser) {
+            content.innerHTML = '<p class="no-news">Please sign in to view your watchlist.</p>';
+            return;
+        }
+        content.innerHTML = '<p class="discover-loading">Loading…</p>';
+        try {
+            const resp = await fetch('/api/watch');
+            const data = await resp.json();
+            const tickers = data.tickers || [];
+            if (tickers.length === 0) {
+                content.innerHTML = '<p class="no-news">Your watchlist is empty. Use the ★ button on any stock page to add it here.</p>';
+                return;
+            }
+            content.innerHTML = '';
+            tickers.forEach(ticker => {
+                const card = document.createElement('button');
+                card.type = 'button';
+                card.className = 'discover-card';
+                card.innerHTML = `
+                    <span class="discover-ticker">${escapeHtml(ticker)}</span>
+                    <span class="discover-name">Click to view brief</span>
+                `;
+                card.addEventListener('click', () => {
+                    closeDrawer();
+                    generateBrief(ticker);
+                });
+                content.appendChild(card);
+            });
+        } catch (err) {
+            content.innerHTML = '<p class="no-news">Failed to load watchlist.</p>';
+        }
     }
 
     /* ---------- Auth ---------- */
