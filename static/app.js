@@ -146,7 +146,7 @@ document.addEventListener('DOMContentLoaded', () => {
         return prices[prices.length - 1] >= prices[0] ? COLOR_UP : COLOR_DOWN;
     }
 
-    function buildChart(dates, prices, ma5, ma20, ma50) {
+    function buildChart(dates, prices, ma5, ma20, ma50, period) {
         if (typeof Chart === 'undefined' || !chartCanvas) {
             chartNote.textContent = 'Chart unavailable.';
             return;
@@ -169,28 +169,42 @@ document.addEventListener('DOMContentLoaded', () => {
             spanGaps: false
         });
 
+        const showMa20 = ['3mo', '6mo', '1y', '5y', 'max'].includes(period);
+        const showMa50 = ['1y', '5y', 'max'].includes(period);
+
+        const datasets = [
+            {
+                label: 'Close',
+                data: prices,
+                borderColor: color,
+                backgroundColor: gradient,
+                borderWidth: 2.5,
+                tension: 0.4,
+                fill: true,
+                pointRadius: 0,
+                pointHoverRadius: 5,
+                pointHoverBackgroundColor: color,
+                pointHoverBorderColor: '#fff',
+                pointHoverBorderWidth: 2
+            },
+            maDataset('MA5', ma5 || [], '#f0a500')
+        ];
+        if (showMa20) datasets.push(maDataset('MA20', ma20 || [], '#3b82f6'));
+        if (showMa50) datasets.push(maDataset('MA50', ma50 || [], '#a855f7'));
+
         const data = {
             labels: dates,
-            datasets: [
-                {
-                    label: 'Close',
-                    data: prices,
-                    borderColor: color,
-                    backgroundColor: gradient,
-                    borderWidth: 2.5,
-                    tension: 0.4,
-                    fill: true,
-                    pointRadius: 0,
-                    pointHoverRadius: 5,
-                    pointHoverBackgroundColor: color,
-                    pointHoverBorderColor: '#fff',
-                    pointHoverBorderWidth: 2
-                },
-                maDataset('MA5', ma5 || [], '#f0a500'),
-                maDataset('MA20', ma20 || [], '#3b82f6'),
-                maDataset('MA50', ma50 || [], '#a855f7')
-            ]
+            datasets: datasets
         };
+
+        if (chartLegend) {
+            const legendItems = [{ label: 'MA5', color: '#f0a500' }];
+            if (showMa20) legendItems.push({ label: 'MA20', color: '#3b82f6' });
+            if (showMa50) legendItems.push({ label: 'MA50', color: '#a855f7' });
+            chartLegend.innerHTML = legendItems.map(m =>
+                `<span class="chart-legend-item"><span class="chart-legend-dot" style="background:${m.color}"></span>${escapeHtml(m.label)}</span>`
+            ).join('');
+        }
 
         const options = {
             responsive: true,
@@ -249,7 +263,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 chartNote.textContent = data.error || 'No historical price data available.';
                 return null;
             }
-            buildChart(data.dates, data.prices, data.ma5, data.ma20, data.ma50);
+            buildChart(data.dates, data.prices, data.ma5, data.ma20, data.ma50, period);
             chartNote.textContent = `Daily closing prices · ${data.dates[0]} to ${data.dates[data.dates.length - 1]}`;
             return data;
         } catch (err) {
@@ -258,6 +272,8 @@ document.addEventListener('DOMContentLoaded', () => {
             return null;
         }
     }
+
+    const chartLegend = document.getElementById('chartLegend');
 
     /* Today's price change from the two most recent closes */
     function renderPriceChange(prices) {

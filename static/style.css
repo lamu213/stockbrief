@@ -418,6 +418,34 @@ body {
     text-align: right;
 }
 
+.chart-legend {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 14px;
+    justify-content: center;
+    margin-top: 10px;
+}
+
+.chart-legend:empty {
+    display: none;
+}
+
+.chart-legend-item {
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    font-size: 0.72rem;
+    color: var(--grey-soft);
+    font-weight: 500;
+}
+
+.chart-legend-dot {
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    flex-shrink: 0;
+}
+
 .snapshot-text {
     margin-top: 8px;
     font-size: 0.82rem;
