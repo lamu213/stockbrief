@@ -241,16 +241,7 @@ def compute_historical_pe(stock, years=5):
         return None
 
 
-def try_get_industry_pe(info):
-    """Try to get industry average PE. yfinance does not expose this cleanly."""
-    for key in ['industryPe', 'industryPE', 'industryTrailingPE', 'sectorPe', 'sectorPE', ' trailingPE_industry']:
-        val = info.get(key)
-        if val is not None and not math.isnan(val):
-            return val
-    return None
-
-
-def get_pe_assessment(current_pe, historical_pe, industry_pe, years=5):
+def get_pe_assessment(current_pe, historical_pe, years=5):
     if current_pe is None or math.isnan(current_pe):
         return {
             'badge': 'grey',
@@ -265,78 +256,26 @@ def get_pe_assessment(current_pe, historical_pe, industry_pe, years=5):
     def _yrs():
         return f"<strong>{years}-year</strong>"
 
-    below_hist = False
-    above_hist = False
-    below_ind = False
-    above_ind = False
-
-    if historical_pe is not None:
-        below_hist = current_pe < historical_pe
-        above_hist = current_pe > historical_pe
-
-    if industry_pe is not None:
-        below_ind = current_pe < industry_pe
-        above_ind = current_pe > industry_pe
-
-    if historical_pe is None and industry_pe is None:
+    if historical_pe is None:
         return {
             'badge': 'grey',
             'text': 'Data unavailable',
-            'explanation': 'Neither industry nor historical average P/E data is available.',
+            'explanation': 'No historical average P/E data is available.',
             'raw': current_pe
         }
 
-    if historical_pe is not None and industry_pe is not None:
-        if below_hist and below_ind:
-            badge = 'green'
-            explanation = (
-                f"P/E of {_fmt(current_pe)} is below both its {_yrs()} average ({_fmt(historical_pe)}) "
-                f"and the industry average ({_fmt(industry_pe)}), suggesting potential undervaluation."
-            )
-        elif above_hist and above_ind:
-            badge = 'red'
-            explanation = (
-                f"P/E of {_fmt(current_pe)} is above both its {_yrs()} average ({_fmt(historical_pe)}) "
-                f"and the industry average ({_fmt(industry_pe)}), indicating a potentially expensive valuation."
-            )
-        else:
-            badge = 'yellow'
-            if above_hist:
-                explanation = (
-                    f"P/E of {_fmt(current_pe)} is above its {_yrs()} average ({_fmt(historical_pe)}) "
-                    f"but below the industry average ({_fmt(industry_pe)}), showing mixed signals."
-                )
-            else:
-                explanation = (
-                    f"P/E of {_fmt(current_pe)} is below its {_yrs()} average ({_fmt(historical_pe)}) "
-                    f"but above the industry average ({_fmt(industry_pe)}), showing mixed signals."
-                )
-    elif historical_pe is not None:
-        if below_hist:
-            badge = 'green'
-            explanation = (
-                f"P/E of {_fmt(current_pe)} is below its {_yrs()} average of {_fmt(historical_pe)}. "
-                f"(Industry data unavailable.)"
-            )
-        else:
-            badge = 'red'
-            explanation = (
-                f"P/E of {_fmt(current_pe)} is above its {_yrs()} average of {_fmt(historical_pe)}. "
-                f"(Industry data unavailable.)"
-            )
-    else:  # only industry_pe
-        if below_ind:
-            badge = 'green'
-            explanation = (
-                f"P/E of {_fmt(current_pe)} is below the industry average of {_fmt(industry_pe)}. "
-                f"(Historical data unavailable.)"
-            )
-        else:
-            badge = 'red'
-            explanation = (
-                f"P/E of {_fmt(current_pe)} is above the industry average of {_fmt(industry_pe)}. "
-                f"(Historical data unavailable.)"
-            )
+    if current_pe < historical_pe:
+        badge = 'green'
+        explanation = (
+            f"P/E of {_fmt(current_pe)} is below its {_yrs()} average of {_fmt(historical_pe)}, "
+            f"suggesting potential undervaluation."
+        )
+    else:
+        badge = 'red'
+        explanation = (
+            f"P/E of {_fmt(current_pe)} is above its {_yrs()} average of {_fmt(historical_pe)}, "
+            f"indicating a potentially expensive valuation."
+        )
 
     return {'badge': badge, 'text': badge.capitalize(), 'explanation': explanation, 'raw': current_pe}
 
@@ -884,7 +823,6 @@ def stock_api(ticker):
     as_of = datetime.now().strftime('%Y-%m-%d')
 
     historical_pe = compute_historical_pe(stock)
-    industry_pe = try_get_industry_pe(info)
 
     # --- Earnings date ---
     next_earnings_date_str = None
@@ -911,7 +849,7 @@ def stock_api(ticker):
 
     rsi = calculate_rsi(stock)
 
-    pe = get_pe_assessment(pe_ratio, historical_pe, industry_pe, years=5)
+    pe = get_pe_assessment(pe_ratio, historical_pe, years=5)
     analyst = get_analyst_assessment(target_mean, current_price)
     peg = get_peg_assessment(peg_ratio)
     rsi_data = get_rsi_assessment(rsi)
@@ -977,8 +915,7 @@ def pe_history_api():
 
     current_pe = info.get('trailingPE')
     historical_pe = compute_historical_pe(stock, years=years)
-    industry_pe = try_get_industry_pe(info)
-    assessment = get_pe_assessment(current_pe, historical_pe, industry_pe, years=years)
+    assessment = get_pe_assessment(current_pe, historical_pe, years=years)
     as_of = datetime.now().strftime('%Y-%m-%d')
 
     return jsonify({
@@ -986,7 +923,6 @@ def pe_history_api():
         'years': years,
         'current_pe': current_pe,
         'historical_pe': historical_pe,
-        'industry_pe': industry_pe,
         'as_of': as_of,
         'assessment': assessment,
         'source': f'Source: Yahoo Finance · {years}-year historical average · as of {as_of}'
