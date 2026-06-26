@@ -31,6 +31,12 @@ document.addEventListener('DOMContentLoaded', () => {
     const compareError = document.getElementById('compareError');
     const compareResults = document.getElementById('compareResults');
 
+    const discoverForm = document.getElementById('discoverForm');
+    const discoverInput = document.getElementById('discoverInput');
+    const discoverBtn = document.getElementById('discoverBtn');
+    const discoverError = document.getElementById('discoverError');
+    const discoverResults = document.getElementById('discoverResults');
+
     const COLOR_UP = '#C96442';   // terracotta
     const COLOR_DOWN = '#E53E3E'; // red
 
@@ -667,6 +673,64 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     }
 
+    /* ---------- Stock discovery ---------- */
+
+    async function runDiscover(event) {
+        if (event) event.preventDefault();
+        const query = discoverInput.value.trim();
+        discoverError.textContent = '';
+        if (!query) {
+            discoverError.textContent = 'Please enter a topic or interest.';
+            return;
+        }
+
+        discoverBtn.disabled = true;
+        discoverResults.innerHTML = '<p class="discover-loading">Finding relevant stocks…</p>';
+
+        try {
+            const resp = await fetch('/api/suggest-stocks', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ query })
+            });
+            const data = await resp.json();
+            if (!resp.ok) {
+                discoverResults.innerHTML = '';
+                discoverError.textContent = data.error || "Couldn't generate suggestions. Try a different topic.";
+                return;
+            }
+            renderDiscoverResults(data.suggestions || []);
+        } catch (err) {
+            discoverResults.innerHTML = '';
+            discoverError.textContent = 'Network error. Please try again.';
+        } finally {
+            discoverBtn.disabled = false;
+        }
+    }
+
+    function renderDiscoverResults(suggestions) {
+        discoverResults.innerHTML = '';
+        if (!suggestions.length) {
+            discoverResults.innerHTML = '<p class="discover-loading">No suggestions found. Try another topic.</p>';
+            return;
+        }
+        suggestions.forEach(s => {
+            const card = document.createElement('button');
+            card.type = 'button';
+            card.className = 'discover-card';
+            card.innerHTML = `
+                <span class="discover-ticker">${escapeHtml(s.ticker)}</span>
+                <span class="discover-name">${escapeHtml(s.name)}</span>
+                <span class="discover-reason">${escapeHtml(s.reason)}</span>
+            `;
+            card.addEventListener('click', () => {
+                tickerInput.value = s.ticker;
+                generateBrief(s.ticker);
+            });
+            discoverResults.appendChild(card);
+        });
+    }
+
     /* ---------- Events ---------- */
 
     generateBtn.addEventListener('click', () => generateBrief());
@@ -699,6 +763,8 @@ document.addEventListener('DOMContentLoaded', () => {
     newSearchBtn.addEventListener('click', backToInput);
 
     compareForm.addEventListener('submit', runCompare);
+
+    discoverForm.addEventListener('submit', runDiscover);
 
     tickerInput.focus();
 });

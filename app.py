@@ -1,6 +1,7 @@
 import os
 import math
 import re
+import json
 from datetime import datetime, timedelta
 from urllib.parse import urlparse
 from flask import Flask, render_template, jsonify, request
@@ -972,6 +973,53 @@ def pe_history_api():
         'assessment': assessment,
         'source': f'Source: Yahoo Finance · {years}-year historical average · as of {as_of}'
     })
+
+
+@app.route('/api/suggest-stocks', methods=['POST'])
+def suggest_stocks_api():
+    body = request.get_json(silent=True) or {}
+    query = (body.get('query') or '').strip()
+    if not query:
+        return jsonify({'error': 'Please enter a topic or interest.'}), 400
+
+    system_prompt = (
+        "You are a knowledgeable stock analyst. Given a user's topic or area of interest, "
+        "suggest 3 to 5 publicly traded US stock tickers that are most relevant. "
+        "Respond ONLY with a JSON object of the form: "
+        '{"suggestions": [{"ticker": "SYM", "name": "Company", "reason": "one short sentence"}, ...]}. '
+        "Do not include any commentary, markdown, or code fences."
+    )
+    user_prompt = f'Topic: {query}'
+
+    raw = groq_chat(system_prompt, user_prompt, max_tokens=400)
+    suggestions = []
+    if raw:
+        try:
+            cleaned = raw.strip()
+            if cleaned.startswith('```'):
+                cleaned = cleaned.split('```')[1]
+                if cleaned.lower().startswith('json'):
+                    cleaned = cleaned[4:]
+            data = json.loads(cleaned)
+            suggestions = data.get('suggestions', [])
+        except (json.JSONDecodeError, ValueError):
+            suggestions = []
+
+    if not suggestions:
+        return jsonify({'error': "Couldn't generate suggestions. Try a different topic."}), 502
+
+    cleaned = []
+    for s in suggestions[:5]:
+        ticker = str(s.get('ticker', '')).strip().upper()
+        name = str(s.get('name', '')).strip()
+        reason = str(s.get('reason', '')).strip()
+        if ticker and name:
+            cleaned.append({'ticker': ticker, 'name': name, 'reason': reason})
+
+    if not cleaned:
+        return jsonify({'error': "Couldn't generate suggestions. Try a different topic."}), 502
+
+    return jsonify({'suggestions': cleaned})
 
 
 if __name__ == '__main__':

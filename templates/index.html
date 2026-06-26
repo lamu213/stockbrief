@@ -29,6 +29,16 @@
                 <button class="quick-pick" data-ticker="TSLA">TSLA</button>
             </div>
 
+            <div class="discover" id="discoverSection">
+                <p class="discover-heading">Not sure what to search?</p>
+                <form class="discover-form" id="discoverForm">
+                    <input type="text" id="discoverInput" placeholder="e.g. AI chips, clean energy, Japanese stocks..." autocomplete="off" aria-label="Stock discovery topic">
+                    <button type="submit" id="discoverBtn">Suggest</button>
+                </form>
+                <p id="discoverError" class="discover-error" role="alert"></p>
+                <div class="discover-results" id="discoverResults"></div>
+            </div>
+
             <p id="errorMsg" class="error-msg" role="alert"></p>
         </section>
 
