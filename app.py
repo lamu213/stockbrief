@@ -772,11 +772,29 @@ def history_api():
         return jsonify({'error': 'No historical price data available for this ticker.'}), 404
     dates = [d.strftime('%Y-%m-%d') for d in hist.index]
     prices = [round(float(c), 2) for c in hist['Close']]
+
+    def moving_average(values, window):
+        result = []
+        for i in range(len(values)):
+            if i + 1 < window:
+                result.append(None)
+            else:
+                window_vals = values[i + 1 - window:i + 1]
+                result.append(round(sum(window_vals) / window, 2))
+        return result
+
+    ma5 = moving_average(prices, 5)
+    ma20 = moving_average(prices, 20)
+    ma50 = moving_average(prices, 50)
+
     return jsonify({
         'ticker': ticker,
         'period': period,
         'dates': dates,
-        'prices': prices
+        'prices': prices,
+        'ma5': ma5,
+        'ma20': ma20,
+        'ma50': ma50
     })
 
 

@@ -146,7 +146,7 @@ document.addEventListener('DOMContentLoaded', () => {
         return prices[prices.length - 1] >= prices[0] ? COLOR_UP : COLOR_DOWN;
     }
 
-    function buildChart(dates, prices) {
+    function buildChart(dates, prices, ma5, ma20, ma50) {
         if (typeof Chart === 'undefined' || !chartCanvas) {
             chartNote.textContent = 'Chart unavailable.';
             return;
@@ -157,22 +157,39 @@ document.addEventListener('DOMContentLoaded', () => {
         gradient.addColorStop(0, hexToRgba(color, 0.28));
         gradient.addColorStop(1, hexToRgba(color, 0));
 
+        const maDataset = (label, data, borderColor) => ({
+            label,
+            data,
+            borderColor,
+            borderWidth: 1.5,
+            tension: 0.3,
+            fill: false,
+            pointRadius: 0,
+            pointHoverRadius: 0,
+            spanGaps: false
+        });
+
         const data = {
             labels: dates,
-            datasets: [{
-                label: 'Close',
-                data: prices,
-                borderColor: color,
-                backgroundColor: gradient,
-                borderWidth: 2.5,
-                tension: 0.4,
-                fill: true,
-                pointRadius: 0,
-                pointHoverRadius: 5,
-                pointHoverBackgroundColor: color,
-                pointHoverBorderColor: '#fff',
-                pointHoverBorderWidth: 2
-            }]
+            datasets: [
+                {
+                    label: 'Close',
+                    data: prices,
+                    borderColor: color,
+                    backgroundColor: gradient,
+                    borderWidth: 2.5,
+                    tension: 0.4,
+                    fill: true,
+                    pointRadius: 0,
+                    pointHoverRadius: 5,
+                    pointHoverBackgroundColor: color,
+                    pointHoverBorderColor: '#fff',
+                    pointHoverBorderWidth: 2
+                },
+                maDataset('MA5', ma5 || [], '#f0a500'),
+                maDataset('MA20', ma20 || [], '#3b82f6'),
+                maDataset('MA50', ma50 || [], '#a855f7')
+            ]
         };
 
         const options = {
@@ -232,7 +249,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 chartNote.textContent = data.error || 'No historical price data available.';
                 return null;
             }
-            buildChart(data.dates, data.prices);
+            buildChart(data.dates, data.prices, data.ma5, data.ma20, data.ma50);
             chartNote.textContent = `Daily closing prices · ${data.dates[0]} to ${data.dates[data.dates.length - 1]}`;
             return data;
         } catch (err) {
