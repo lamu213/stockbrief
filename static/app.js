@@ -51,7 +51,6 @@ document.addEventListener('DOMContentLoaded', () => {
     let priceChart = null;
     let currentTicker = '';
     let currentFactors = [];
-    let currentPeYears = 5;
 
     /* ---------- Helpers ---------- */
 
@@ -318,14 +317,6 @@ document.addEventListener('DOMContentLoaded', () => {
         'Earnings Date': "Next scheduled earnings report \u2014 results can move the stock significantly in either direction."
     };
 
-    function pePeriodSelect(selected) {
-        const opts = [3, 5, 10].map(y => {
-            const isSel = y === selected ? 'selected' : '';
-            return `<option value="${y}" ${isSel}>${y}Y</option>`;
-        }).join('');
-        return `<select class="pe-period-select" aria-label="P/E historical average period">${opts}</select>`;
-    }
-
     function renderScorecard(factors) {
         scorecardBody.innerHTML = '';
         factors.forEach((f, i) => {
@@ -334,14 +325,7 @@ document.addEventListener('DOMContentLoaded', () => {
             tr.style.animationDelay = `${0.08 + i * 0.07}s`;
             tr.dataset.factorName = f.name;
 
-            const isPe = f.name === 'P/E Ratio';
-            const head = isPe
-                ? `<div class="factor-row-head">
-                       <span class="chevron" aria-hidden="true">&rsaquo;</span>
-                       <span class="factor-name">${escapeHtml(f.name)}</span>
-                       ${pePeriodSelect(f.years || currentPeYears)}
-                   </div>`
-                : `<div class="factor-row-head">
+            const head = `<div class="factor-row-head">
                        <span class="chevron" aria-hidden="true">&rsaquo;</span>
                        <span class="factor-name">${escapeHtml(f.name)}</span>
                    </div>`;
@@ -358,12 +342,6 @@ document.addEventListener('DOMContentLoaded', () => {
                 <td>${renderBadge(f.badge, f.text)}</td>
             `;
             scorecardBody.appendChild(tr);
-
-            if (isPe) {
-                const select = tr.querySelector('.pe-period-select');
-                select.addEventListener('change', (e) => onPePeriodChange(e.target.value, tr));
-                select.addEventListener('click', (e) => e.stopPropagation());
-            }
         });
 
         scorecardBody.querySelectorAll('.scorecard-body-row').forEach(row => {
@@ -375,56 +353,6 @@ document.addEventListener('DOMContentLoaded', () => {
                 }
             });
         });
-    }
-
-    /* ---------- P/E period change ---------- */
-
-    async function onPePeriodChange(yearsStr, rowEl) {
-        const years = parseInt(yearsStr, 10);
-        if (!currentTicker || !years) return;
-        currentPeYears = years;
-        const select = rowEl.querySelector('.pe-period-select');
-        if (select) select.disabled = true;
-        rowEl.classList.add('pe-row-busy');
-
-        try {
-            const resp = await fetch(`/api/pe-history?ticker=${encodeURIComponent(currentTicker)}&years=${years}`);
-            const data = await resp.json();
-            if (!resp.ok || !data.assessment) {
-                if (select) select.disabled = false;
-                rowEl.classList.remove('pe-row-busy');
-                return;
-            }
-            const a = data.assessment;
-            const explEl = rowEl.querySelector('.factor-explanation');
-            const sourceEl = rowEl.querySelector('.source-label');
-            const badgeCell = rowEl.querySelector('td:last-child');
-
-            if (explEl) explEl.innerHTML = a.explanation || 'No explanation available.';
-            if (sourceEl && data.source) sourceEl.textContent = data.source;
-            if (badgeCell) badgeCell.innerHTML = renderBadge(a.badge, a.text);
-
-            // Update signal class on the row, then expand so new data is visible
-            rowEl.classList.remove('signal-green', 'signal-yellow', 'signal-red', 'signal-grey');
-            rowEl.classList.add(`signal-${a.badge || 'grey'}`);
-            rowEl.classList.remove('collapsed');
-
-            // Keep currentFactors in sync for the compare feature
-            const peFactor = currentFactors.find(f => f.name === 'P/E Ratio');
-            if (peFactor) {
-                peFactor.badge = a.badge;
-                peFactor.text = a.text;
-                peFactor.explanation = a.explanation;
-                peFactor.years = years;
-                peFactor.source = data.source;
-            }
-            refreshCompareIfVisible();
-        } catch (err) {
-            // silently leave previous values
-        } finally {
-            if (select) select.disabled = false;
-            rowEl.classList.remove('pe-row-busy');
-        }
     }
 
     /* ---------- News ---------- */
@@ -456,7 +384,6 @@ document.addEventListener('DOMContentLoaded', () => {
     function renderBrief(stockData) {
         currentTicker = stockData.ticker;
         currentFactors = (stockData.factors || []).map(f => ({ ...f }));
-        currentPeYears = 5;
         compareResults.innerHTML = '';
         compareError.textContent = '';
         compareTickerInput.value = '';

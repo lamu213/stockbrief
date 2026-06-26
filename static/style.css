@@ -776,34 +776,6 @@ body {
     line-height: 1.4;
 }
 
-/* P/E period selector */
-.pe-period-select {
-    background: var(--cream);
-    border: 1px solid #E0DCD4;
-    border-radius: 999px;
-    font-size: 0.72rem;
-    font-weight: 700;
-    color: var(--terracotta);
-    padding: 3px 10px;
-    cursor: pointer;
-    letter-spacing: 0.4px;
-    outline: none;
-    transition: border-color 0.2s;
-}
-
-.pe-period-select:hover {
-    border-color: var(--terracotta);
-}
-
-.pe-period-select:focus {
-    border-color: var(--terracotta);
-}
-
-.pe-row-busy .factor-explanation,
-.pe-row-busy .source-label {
-    opacity: 0.5;
-}
-
 /* ============================================
    Traffic-light pill badges
    ============================================ */
