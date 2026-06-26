@@ -997,6 +997,7 @@ def pe_history_api():
 def suggest_stocks_api():
     body = request.get_json(silent=True) or {}
     query = (body.get('query') or '').strip()
+    exclude = body.get('exclude') or []
     if not query:
         return jsonify({'error': 'Please enter a topic or interest.'}), 400
 
@@ -1008,6 +1009,8 @@ def suggest_stocks_api():
         "Do not include any commentary, markdown, or code fences."
     )
     user_prompt = f'Topic: {query}'
+    if exclude:
+        user_prompt += f'\nDo not suggest these tickers: {", ".join(exclude)}.'
 
     raw = aiand_chat(system_prompt, user_prompt, max_tokens=2000)
     suggestions = []

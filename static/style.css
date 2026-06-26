@@ -273,6 +273,36 @@ body {
     transform: scale(0.99);
 }
 
+.discover-show-more {
+    background: transparent;
+    color: var(--terracotta);
+    border: 1.5px solid var(--terracotta);
+    padding: 8px 20px;
+    border-radius: 999px;
+    font-size: 0.82rem;
+    font-weight: 600;
+    cursor: pointer;
+    align-self: center;
+    margin-top: 4px;
+    transition: background 0.2s, color 0.2s, transform 0.15s;
+}
+
+.discover-show-more:hover {
+    background: var(--terracotta);
+    color: #fff;
+}
+
+.discover-show-more:active {
+    transform: scale(0.97);
+}
+
+.discover-show-more:disabled {
+    background: transparent;
+    color: var(--grey-soft);
+    border-color: #E0DCD4;
+    cursor: not-allowed;
+}
+
 .discover-ticker {
     font-size: 0.95rem;
     font-weight: 800;

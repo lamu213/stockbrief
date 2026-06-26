@@ -676,6 +676,11 @@ document.addEventListener('DOMContentLoaded', () => {
 
     /* ---------- Stock discovery ---------- */
 
+    let discoverQuery = '';
+    let discoverShownTickers = [];
+    let discoverRounds = 0;
+    const MAX_DISCOVER_ROUNDS = 3;
+
     async function runDiscover(event) {
         if (event) event.preventDefault();
         const query = discoverInput.value.trim();
@@ -685,6 +690,9 @@ document.addEventListener('DOMContentLoaded', () => {
             return;
         }
 
+        discoverQuery = query;
+        discoverShownTickers = [];
+        discoverRounds = 0;
         discoverBtn.disabled = true;
         discoverResults.innerHTML = '<p class="discover-loading">Finding relevant stocks…</p>';
 
@@ -700,7 +708,8 @@ document.addEventListener('DOMContentLoaded', () => {
                 discoverError.textContent = data.error || "Couldn't generate suggestions. Try a different topic.";
                 return;
             }
-            renderDiscoverResults(data.suggestions || []);
+            discoverResults.innerHTML = '';
+            appendDiscoverCards(data.suggestions || []);
         } catch (err) {
             discoverResults.innerHTML = '';
             discoverError.textContent = 'Network error. Please try again.';
@@ -709,13 +718,15 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     }
 
-    function renderDiscoverResults(suggestions) {
-        discoverResults.innerHTML = '';
+    function appendDiscoverCards(suggestions) {
         if (!suggestions.length) {
             discoverResults.innerHTML = '<p class="discover-loading">No suggestions found. Try another topic.</p>';
             return;
         }
         suggestions.forEach(s => {
+            if (!discoverShownTickers.includes(s.ticker)) {
+                discoverShownTickers.push(s.ticker);
+            }
             const card = document.createElement('button');
             card.type = 'button';
             card.className = 'discover-card';
@@ -730,6 +741,44 @@ document.addEventListener('DOMContentLoaded', () => {
             });
             discoverResults.appendChild(card);
         });
+        discoverRounds++;
+        if (discoverRounds < MAX_DISCOVER_ROUNDS) {
+            const showMore = document.createElement('button');
+            showMore.type = 'button';
+            showMore.className = 'discover-show-more';
+            showMore.textContent = 'Show more suggestions';
+            showMore.addEventListener('click', loadMoreDiscover);
+            discoverResults.appendChild(showMore);
+        }
+    }
+
+    async function loadMoreDiscover() {
+        const showMoreBtn = discoverResults.querySelector('.discover-show-more');
+        if (showMoreBtn) {
+            showMoreBtn.disabled = true;
+            showMoreBtn.textContent = 'Loading…';
+        }
+
+        try {
+            const resp = await fetch('/api/suggest-stocks', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ query: discoverQuery, exclude: discoverShownTickers })
+            });
+            const data = await resp.json();
+            if (showMoreBtn) showMoreBtn.remove();
+            if (!resp.ok) {
+                discoverError.textContent = data.error || "Couldn't find more suggestions.";
+                return;
+            }
+            appendDiscoverCards(data.suggestions || []);
+        } catch (err) {
+            if (showMoreBtn) {
+                showMoreBtn.disabled = false;
+                showMoreBtn.textContent = 'Show more suggestions';
+            }
+            discoverError.textContent = 'Network error. Please try again.';
+        }
     }
 
     /* ---------- Chat panel ---------- */
