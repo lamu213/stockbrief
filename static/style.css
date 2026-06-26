@@ -539,6 +539,113 @@ body {
     50% { opacity: 1; }
 }
 
+/* ---- Loading animation containers (SVG + caption) ---- */
+.loading-anim {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 12px;
+}
+
+/* Drop the standalone padding when the caption lives inside an animation container */
+.loading-anim .discover-loading {
+    padding: 0;
+}
+
+/* ===== Animation A: Money bag dropping coins ===== */
+.anim-moneybag {
+    display: block;
+}
+
+.anim-moneybag .bag {
+    transform-box: fill-box;
+    transform-origin: center top;
+    animation: bag-sway 1.2s ease-in-out infinite;
+}
+
+@keyframes bag-sway {
+    0%   { transform: rotate(-3deg); }
+    50%  { transform: rotate(3deg); }
+    100% { transform: rotate(-3deg); }
+}
+
+.anim-moneybag .coin {
+    animation: coin-drop 1.2s ease-in infinite;
+}
+
+.anim-moneybag .coin-1 { animation-delay: 0s; }
+.anim-moneybag .coin-2 { animation-delay: 0.4s; }
+.anim-moneybag .coin-3 { animation-delay: 0.8s; }
+
+@keyframes coin-drop {
+    0%   { transform: translateY(0); opacity: 1; }
+    60%  { transform: translateY(38px); opacity: 1; }
+    100% { transform: translateY(63px); opacity: 0; }
+}
+
+/* ===== Animation B: K-line chart auto-generation ===== */
+.anim-kchart {
+    display: block;
+}
+
+.anim-kchart .kbar {
+    transform-box: fill-box;
+    transform-origin: center bottom;
+    animation-timing-function: ease-out;
+    animation-duration: 2.5s;
+    animation-iteration-count: infinite;
+}
+
+.anim-kchart .kbar-1 { animation-name: kbar1; }
+.anim-kchart .kbar-2 { animation-name: kbar2; }
+.anim-kchart .kbar-3 { animation-name: kbar3; }
+.anim-kchart .kbar-4 { animation-name: kbar4; }
+.anim-kchart .kbar-5 { animation-name: kbar5; }
+
+@keyframes kbar1 {
+    0%   { transform: scaleY(0); opacity: 1; }
+    12%  { transform: scaleY(1); opacity: 1; }
+    64%  { transform: scaleY(1); opacity: 1; }
+    76%  { transform: scaleY(1); opacity: 0; }
+    100% { transform: scaleY(1); opacity: 0; }
+}
+
+@keyframes kbar2 {
+    0%   { transform: scaleY(0); opacity: 1; }
+    8%   { transform: scaleY(0); opacity: 1; }
+    20%  { transform: scaleY(1); opacity: 1; }
+    64%  { transform: scaleY(1); opacity: 1; }
+    76%  { transform: scaleY(1); opacity: 0; }
+    100% { transform: scaleY(1); opacity: 0; }
+}
+
+@keyframes kbar3 {
+    0%   { transform: scaleY(0); opacity: 1; }
+    16%  { transform: scaleY(0); opacity: 1; }
+    28%  { transform: scaleY(1); opacity: 1; }
+    64%  { transform: scaleY(1); opacity: 1; }
+    76%  { transform: scaleY(1); opacity: 0; }
+    100% { transform: scaleY(1); opacity: 0; }
+}
+
+@keyframes kbar4 {
+    0%   { transform: scaleY(0); opacity: 1; }
+    24%  { transform: scaleY(0); opacity: 1; }
+    36%  { transform: scaleY(1); opacity: 1; }
+    64%  { transform: scaleY(1); opacity: 1; }
+    76%  { transform: scaleY(1); opacity: 0; }
+    100% { transform: scaleY(1); opacity: 0; }
+}
+
+@keyframes kbar5 {
+    0%   { transform: scaleY(0); opacity: 1; }
+    32%  { transform: scaleY(0); opacity: 1; }
+    44%  { transform: scaleY(1); opacity: 1; }
+    64%  { transform: scaleY(1); opacity: 1; }
+    76%  { transform: scaleY(1); opacity: 0; }
+    100% { transform: scaleY(1); opacity: 0; }
+}
+
 /* ============================================
    Results
    ============================================ */

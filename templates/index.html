@@ -49,8 +49,20 @@
 
         <!-- ============ Loading ============ -->
         <section id="loadingSection" class="loading-section hidden">
-            <div class="spinner"></div>
-            <p class="loading-text">Gathering data...</p>
+            <div class="loading-anim">
+                <svg class="anim-moneybag" width="80" height="90" viewBox="0 0 80 90" aria-hidden="true" focusable="false">
+                    <g class="bag">
+                        <circle cx="40" cy="58" r="22" fill="#2A2D3A" stroke="#6B7090" stroke-width="1.5"/>
+                        <ellipse cx="40" cy="36" rx="10" ry="6" fill="#2A2D3A" stroke="#6B7090" stroke-width="1.5"/>
+                        <circle cx="40" cy="30" r="4" fill="#8B6914"/>
+                        <text x="40" y="63" text-anchor="middle" fill="#F5C842" font-size="16" font-weight="bold">$</text>
+                    </g>
+                    <ellipse class="coin coin-1" cx="40" cy="32" rx="6" ry="4" fill="#F5C842" stroke="#D4A017" stroke-width="1"/>
+                    <ellipse class="coin coin-2" cx="33" cy="32" rx="6" ry="4" fill="#F5C842" stroke="#D4A017" stroke-width="1"/>
+                    <ellipse class="coin coin-3" cx="47" cy="32" rx="6" ry="4" fill="#F5C842" stroke="#D4A017" stroke-width="1"/>
+                </svg>
+                <p class="loading-text">Gathering data...</p>
+            </div>
         </section>
 
         <!-- ============ Results ============ -->
