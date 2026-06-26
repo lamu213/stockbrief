@@ -32,6 +32,7 @@ document.addEventListener('DOMContentLoaded', () => {
     const tickerSymbolEl = document.getElementById('tickerSymbol');
     const currentPriceEl = document.getElementById('currentPrice');
     const priceChangeEl = document.getElementById('priceChange');
+    const heroBar = document.getElementById('heroBar');
     const snapshotTextEl = document.getElementById('snapshotText');
     const scorecardBody = document.getElementById('scorecardBody');
     const snapshotSentenceEl = document.getElementById('snapshotSentence');
@@ -320,6 +321,7 @@ document.addEventListener('DOMContentLoaded', () => {
         if (!prices || prices.length < 2) {
             priceChangeEl.textContent = '';
             priceChangeEl.className = 'price-change';
+            heroBar.className = 'hero-bar';
             return;
         }
         const last = prices[prices.length - 1];
@@ -332,6 +334,7 @@ document.addEventListener('DOMContentLoaded', () => {
         const arrow = change > 0 ? '\u25B2' : (change < 0 ? '\u25BC' : '');
         priceChangeEl.textContent = `${arrow} ${sign}$${absChange} (${sign}${absPct}%)`;
         priceChangeEl.className = 'price-change ' + (change > 0 ? 'up' : change < 0 ? 'down' : 'flat');
+        heroBar.className = 'hero-bar ' + (change > 0 ? 'up' : change < 0 ? 'down' : '');
     }
 
     /* ---------- Scorecard table ---------- */
@@ -414,6 +417,7 @@ document.addEventListener('DOMContentLoaded', () => {
         compareResults.innerHTML = '';
         compareError.textContent = '';
         compareTickerInput.value = '';
+        heroBar.className = 'hero-bar';
 
         renderLogo(stockData);
 

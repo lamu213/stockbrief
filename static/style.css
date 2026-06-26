@@ -644,8 +644,8 @@ body {
     width: 280px;
     max-width: 80vw;
     height: 100%;
-    background: var(--bg-card);
-    border-right: 1px solid var(--border-color);
+    background: #141820;
+    border-right: 1px solid #2A2D3A;
     box-shadow: 2px 0 20px rgba(0, 0, 0, 0.3);
     transform: translateX(-100%);
     transition: transform 0.3s ease;
@@ -663,13 +663,13 @@ body {
     align-items: center;
     justify-content: space-between;
     padding: 22px 24px;
-    border-bottom: 1px solid var(--border-color);
+    border-bottom: 1px solid #2A2D3A;
 }
 
 .drawer-brand {
     font-size: 1.3rem;
     font-weight: 800;
-    color: var(--accent);
+    color: #00D4AA;
     letter-spacing: -0.5px;
 }
 
@@ -677,7 +677,7 @@ body {
     background: none;
     border: none;
     font-size: 1.6rem;
-    color: var(--text-muted);
+    color: #6B7090;
     cursor: pointer;
     line-height: 1;
     padding: 4px 8px;
@@ -685,7 +685,7 @@ body {
 }
 
 .drawer-close:hover {
-    color: var(--text-primary);
+    color: #F0F0F0;
 }
 
 .drawer-nav {
@@ -696,6 +696,7 @@ body {
 }
 
 .drawer-item {
+    position: relative;
     display: block;
     width: 100%;
     text-align: left;
@@ -704,25 +705,44 @@ body {
     padding: 14px 24px;
     font-size: 0.92rem;
     font-weight: 600;
-    color: var(--text-secondary);
+    color: #8A8FA8;
     cursor: pointer;
     transition: background 0.15s, color 0.15s;
 }
 
 .drawer-item:hover {
-    background: var(--bg-primary);
-    color: var(--text-primary);
+    background: #1A1D27;
+    color: #F0F0F0;
+}
+
+.drawer-item:hover::before {
+    content: '';
+    position: absolute;
+    left: 0;
+    top: 0;
+    bottom: 0;
+    width: 3px;
+    background: #00D4AA;
 }
 
 .drawer-item.active {
-    color: var(--accent);
+    color: #00D4AA;
     background: rgba(0, 212, 170, 0.08);
-    border-left: 3px solid var(--accent);
+}
+
+.drawer-item.active::before {
+    content: '';
+    position: absolute;
+    left: 0;
+    top: 0;
+    bottom: 0;
+    width: 3px;
+    background: #00D4AA;
 }
 
 .drawer-divider {
     height: 1px;
-    background: var(--border-color);
+    background: #2A2D3A;
     margin: 8px 20px;
 }
 
@@ -932,6 +952,22 @@ body {
    ============================================ */
 .hero {
     padding: 28px;
+    overflow: hidden;
+}
+
+/* Top color bar on the hero card — green/red by day's change */
+.hero-bar {
+    height: 4px;
+    margin: -28px -28px 24px;
+    background: #2A2D3A;
+}
+
+.hero-bar.up {
+    background: #00C48C;
+}
+
+.hero-bar.down {
+    background: #FF5B5B;
 }
 
 .hero-top {
@@ -975,10 +1011,10 @@ body {
     width: 48px;
     height: 48px;
     border-radius: 50%;
-    background: var(--accent);
-    color: var(--bg-primary);
+    background: linear-gradient(135deg, #00D4AA, #0066CC);
+    color: #FFFFFF;
     font-size: 1.3rem;
-    font-weight: 700;
+    font-weight: 600;
     align-items: center;
     justify-content: center;
     text-transform: uppercase;
@@ -1022,6 +1058,7 @@ body {
 }
 
 .current-price {
+    font-family: 'SF Mono', 'Consolas', 'Monaco', monospace;
     font-size: 2.1rem;
     font-weight: 800;
     color: var(--text-primary);
@@ -1031,6 +1068,7 @@ body {
 }
 
 .price-change {
+    font-family: 'SF Mono', 'Consolas', 'Monaco', monospace;
     margin-top: 4px;
     font-size: 0.95rem;
     font-weight: 600;
@@ -1395,10 +1433,11 @@ body {
     align-items: flex-start;
     gap: 10px;
     font-size: 0.86rem;
-    color: var(--text-primary);
+    color: #F0F0F0;
     line-height: 1.5;
     padding: 10px 12px;
-    background: var(--bg-red);
+    background: #2E0D0D;
+    border-left: 3px solid #FF5B5B;
     border-radius: 10px;
 }
 
@@ -1413,7 +1452,7 @@ body {
 
 .risk-label {
     font-weight: 700;
-    color: var(--text-primary);
+    color: #FF5B5B;
 }
 
 .risk-empty {
