@@ -76,9 +76,14 @@ document.addEventListener('DOMContentLoaded', () => {
     const COLOR_UP = '#C96442';   // terracotta
     const COLOR_DOWN = '#E53E3E'; // red
 
+    const COMPARE_COLOR_A = '#00D4AA';
+    const COMPARE_COLOR_B = '#6C8EFF';
+
     let priceChart = null;
+    let compareChart = null;
     let currentTicker = '';
     let currentFactors = [];
+    let currentStockData = null;
 
     /* ---------- Helpers ---------- */
 
@@ -414,7 +419,11 @@ document.addEventListener('DOMContentLoaded', () => {
     function renderBrief(stockData) {
         currentTicker = stockData.ticker;
         currentFactors = (stockData.factors || []).map(f => ({ ...f }));
+        currentStockData = stockData;
+        if (compareChart) { compareChart.destroy(); compareChart = null; }
         compareResults.innerHTML = '';
+        delete compareResults.dataset.tickerB;
+        delete compareResults.dataset.dataB;
         compareError.textContent = '';
         compareTickerInput.value = '';
         heroBar.className = 'hero-bar';
@@ -529,6 +538,7 @@ document.addEventListener('DOMContentLoaded', () => {
         briefContent.classList.add('hidden');
         inputView.classList.remove('hidden');
         if (priceChart) { priceChart.destroy(); priceChart = null; }
+        if (compareChart) { compareChart.destroy(); compareChart = null; }
         tickerInput.value = '';
         clearError();
         tickerInput.focus();
@@ -538,52 +548,139 @@ document.addEventListener('DOMContentLoaded', () => {
     /* ---------- Compare feature ---------- */
 
     function refreshCompareIfVisible() {
-        if (compareResults.querySelector('.compare-table')) {
+        if (compareResults.querySelector('.compare-results')) {
             renderCompareTable();
         }
     }
 
-    function renderCompareTable(stockBData) {
-        // If called without stockBData, re-render using last compared ticker stored on the section
-        let factorsB = null;
-        let tickerB = '';
-        if (stockBData) {
-            factorsB = (stockBData.factors || []).map(f => ({ ...f }));
-            tickerB = stockBData.ticker;
-            compareResults.dataset.tickerB = tickerB;
-            compareResults.dataset.factorsB = JSON.stringify(factorsB);
-        } else {
-            tickerB = compareResults.dataset.tickerB || '';
-            try {
-                factorsB = JSON.parse(compareResults.dataset.factorsB || '[]');
-            } catch (e) {
-                factorsB = [];
-            }
-        }
+    /* Compare needs ticker A's financial fields, so keep a trimmed copy. */
+    function extractCompareData(stockData) {
+        if (!stockData) return null;
+        return {
+            ticker: stockData.ticker,
+            factors: (stockData.factors || []).map(f => ({ ...f })),
+            current_price: stockData.current_price,
+            pe_value: stockData.pe_value,
+            analyst_upside_value: stockData.analyst_upside_value,
+            peg_value: stockData.peg_value,
+            market_cap: stockData.market_cap,
+            week_52_high: stockData.week_52_high,
+            week_52_low: stockData.week_52_low,
+            dividend_yield: stockData.dividend_yield
+        };
+    }
 
-        if (!factorsB || factorsB.length === 0) return;
+    function numOrNull(v) {
+        if (v == null) return null;
+        const n = Number(v);
+        return isFinite(n) ? n : null;
+    }
 
-        const factorsA = currentFactors;
-        const tickerA = currentTicker || 'Stock A';
+    function formatPrice(v) {
+        const n = numOrNull(v);
+        if (n == null) return '—';
+        return '$' + n.toFixed(2);
+    }
 
+    function formatMarketCap(v) {
+        const n = numOrNull(v);
+        if (n == null || n <= 0) return '—';
+        const strip = (x) => x.toFixed(2).replace(/\.?0+$/, '');
+        if (n >= 1e12) return '$' + strip(n / 1e12) + 'T';
+        if (n >= 1e9) return '$' + strip(n / 1e9) + 'B';
+        if (n >= 1e6) return '$' + strip(n / 1e6) + 'M';
+        if (n >= 1e3) return '$' + strip(n / 1e3) + 'K';
+        return '$' + n.toFixed(0);
+    }
+
+    function formatDividendYield(v) {
+        const n = numOrNull(v);
+        if (n == null || n <= 0) return '—';
+        return n.toFixed(1) + '%';
+    }
+
+    function compute52wPosition(price, high, low) {
+        const p = numOrNull(price), h = numOrNull(high), l = numOrNull(low);
+        if (p == null || h == null || l == null) return null;
+        if (h <= l) return p >= h ? 100 : 0;
+        const pct = ((p - l) / (h - l)) * 100;
+        return Math.max(0, Math.min(100, pct));
+    }
+
+    function positionCell(data) {
+        const pos = compute52wPosition(data.current_price, data.week_52_high, data.week_52_low);
+        if (pos == null) return '<span class="cmp-na">—</span>';
+        return `<span class="cmp-pos">
+                    <span class="cmp-pos-pct">${pos.toFixed(0)}%</span>
+                    <span class="cmp-pos-track"><span class="cmp-pos-fill" style="width:${pos}%"></span></span>
+                </span>`;
+    }
+
+    /* Winner for a valuation factor: 'A', 'B', or null (tie / missing). */
+    function compareWinner(a, b, lowerBetter) {
+        const an = numOrNull(a), bn = numOrNull(b);
+        if (an == null && bn == null) return null;
+        if (an == null) return 'B';
+        if (bn == null) return 'A';
+        if (an === bn) return null;
+        if (lowerBetter) return an < bn ? 'A' : 'B';
+        return an > bn ? 'A' : 'B';
+    }
+
+    /* Bar width (%) proportional to value, scaled against the row's max. */
+    function valBarWidth(value, maxVal) {
+        const n = numOrNull(value);
+        if (n == null) return 0;
+        if (maxVal <= 0) return 4;
+        const ratio = Math.max(0, n) / maxVal;
+        return Math.max(4, Math.min(100, ratio * 100));
+    }
+
+    function formatVal(value, decimals, suffix) {
+        const n = numOrNull(value);
+        if (n == null) return '—';
+        return n.toFixed(decimals) + (suffix || '');
+    }
+
+    function valuationRow(cfg, dataA, dataB) {
+        const a = dataA[cfg.key];
+        const b = dataB[cfg.key];
+        const an = numOrNull(a), bn = numOrNull(b);
+        const maxVal = Math.max(an || 0, bn || 0);
+        const winner = compareWinner(a, b, cfg.lowerBetter);
+        const line = (side, value, color) => {
+            const w = valBarWidth(value, maxVal);
+            const isWinner = winner === side;
+            return `<div class="cmp-bar-line cmp-side-${side.toLowerCase()}">
+                        <div class="cmp-bar-track">
+                            <div class="cmp-bar-fill" style="width:${w}%;background:${color}"></div>
+                        </div>
+                        <span class="cmp-bar-value">${escapeHtml(formatVal(value, cfg.decimals, cfg.suffix))}</span>
+                        <span class="cmp-bar-check${isWinner ? ' is-winner' : ''}" aria-hidden="true">${isWinner ? '\u2713' : ''}</span>
+                    </div>`;
+        };
+        return `<div class="cmp-bar-row">
+                    <div class="cmp-bar-label">${escapeHtml(cfg.name)}</div>
+                    <div class="cmp-bar-pair">
+                        ${line('A', a, COMPARE_COLOR_A)}
+                        ${line('B', b, COMPARE_COLOR_B)}
+                    </div>
+                </div>`;
+    }
+
+    function signalTable(factorsA, factorsB, tickerA, tickerB) {
         const factorOrder = ['P/E Ratio', 'Analyst Price Target', 'PEG Ratio', 'RSI (14-day)', 'Earnings Date'];
         const findFactor = (arr, name) => arr.find(f => f.name === name);
-
         const rows = factorOrder.map(name => {
             const a = findFactor(factorsA, name) || {};
             const b = findFactor(factorsB, name) || {};
-            return `
-                <tr>
-                    <td class="compare-factor-name">${escapeHtml(name)}</td>
-                    <td>${renderBadge(a.badge, a.text)}</td>
-                    <td>${renderBadge(b.badge, b.text)}</td>
-                </tr>
-            `;
+            return `<tr>
+                        <td class="compare-factor-name">${escapeHtml(name)}</td>
+                        <td>${renderBadge(a.badge, a.text)}</td>
+                        <td>${renderBadge(b.badge, b.text)}</td>
+                    </tr>`;
         }).join('');
-
-        compareResults.innerHTML = `
-            <div class="compare-table-wrap">
-                <table class="compare-table">
+        return `<table class="compare-table">
                     <thead>
                         <tr>
                             <th>Factor</th>
@@ -592,9 +689,232 @@ document.addEventListener('DOMContentLoaded', () => {
                         </tr>
                     </thead>
                     <tbody>${rows}</tbody>
-                </table>
+                </table>`;
+    }
+
+    function financialsTable(dataA, dataB, tickerA, tickerB) {
+        const rows = [
+            ['Current Price', formatPrice(dataA.current_price), formatPrice(dataB.current_price)],
+            ['Market Cap', formatMarketCap(dataA.market_cap), formatMarketCap(dataB.market_cap)],
+            ['52W High', formatPrice(dataA.week_52_high), formatPrice(dataB.week_52_high)],
+            ['52W Low', formatPrice(dataA.week_52_low), formatPrice(dataB.week_52_low)],
+            ['52W Position', positionCell(dataA), positionCell(dataB)],
+            ['Dividend Yield', formatDividendYield(dataA.dividend_yield), formatDividendYield(dataB.dividend_yield)]
+        ];
+        const body = rows.map((r, i) => `
+            <tr class="${i % 2 === 0 ? 'cmp-row-even' : 'cmp-row-odd'}">
+                <td class="cmp-fin-name">${escapeHtml(r[0])}</td>
+                <td>${r[1]}</td>
+                <td>${r[2]}</td>
+            </tr>
+        `).join('');
+        return `<table class="cmp-fin-table">
+                    <thead>
+                        <tr>
+                            <th>Metric</th>
+                            <th><span class="cmp-th-a">${escapeHtml(tickerA)}</span></th>
+                            <th><span class="cmp-th-b">${escapeHtml(tickerB)}</span></th>
+                        </tr>
+                    </thead>
+                    <tbody>${body}</tbody>
+                </table>`;
+    }
+
+    function renderCompareTable(stockBData) {
+        // Re-render path: when called without data, reuse the last stored ticker B.
+        let dataB = null;
+        let tickerB = '';
+        if (stockBData) {
+            dataB = extractCompareData(stockBData);
+            tickerB = stockBData.ticker;
+            compareResults.dataset.tickerB = tickerB;
+            compareResults.dataset.dataB = JSON.stringify(dataB);
+        } else {
+            tickerB = compareResults.dataset.tickerB || '';
+            try {
+                dataB = JSON.parse(compareResults.dataset.dataB || 'null');
+            } catch (e) {
+                dataB = null;
+            }
+        }
+        if (!dataB) return;
+
+        // Drop any existing compare chart before its canvas leaves the DOM.
+        if (compareChart) { compareChart.destroy(); compareChart = null; }
+
+        const dataA = extractCompareData(currentStockData) || { ticker: currentTicker };
+        const tickerA = currentTicker || 'Stock A';
+
+        const valuationCfg = [
+            { name: 'P/E Ratio', key: 'pe_value', lowerBetter: true, decimals: 1 },
+            { name: 'Analyst Upside', key: 'analyst_upside_value', lowerBetter: false, decimals: 1, suffix: '%' },
+            { name: 'PEG Ratio', key: 'peg_value', lowerBetter: true, decimals: 1 }
+        ];
+        const valuationHtml = valuationCfg.map(c => valuationRow(c, dataA, dataB)).join('');
+
+        compareResults.innerHTML = `
+            <div class="compare-results">
+                <section class="cmp-block cmp-chart-block">
+                    <h3 class="section-title">Normalized Performance</h3>
+                    <div class="cmp-chart-header">
+                        <div class="cmp-chart-legend">
+                            <span class="cmp-legend-item"><span class="cmp-legend-dot" style="background:${COMPARE_COLOR_A}"></span>${escapeHtml(tickerA)}</span>
+                            <span class="cmp-legend-item"><span class="cmp-legend-dot" style="background:${COMPARE_COLOR_B}"></span>${escapeHtml(tickerB)}</span>
+                        </div>
+                        <div class="cmp-chart-periods" role="group" aria-label="Comparison chart period">
+                            <button class="compare-period active" data-period="3mo" type="button">3M</button>
+                            <button class="compare-period" data-period="6mo" type="button">6M</button>
+                            <button class="compare-period" data-period="1y" type="button">1Y</button>
+                        </div>
+                    </div>
+                    <div class="cmp-chart-wrap">
+                        <canvas id="compareChart" aria-label="Normalized performance comparison chart"></canvas>
+                    </div>
+                    <p class="cmp-chart-note" id="compareChartNote">Loading chart…</p>
+                </section>
+
+                <section class="cmp-block cmp-valuation">
+                    <h3 class="section-title">Valuation Comparison</h3>
+                    ${valuationHtml}
+                </section>
+
+                <section class="cmp-block cmp-signals">
+                    <h3 class="section-title">Signal Comparison</h3>
+                    <div class="compare-table-wrap">
+                        ${signalTable(dataA.factors || [], dataB.factors || [], tickerA, tickerB)}
+                    </div>
+                </section>
+
+                <section class="cmp-block cmp-financials">
+                    <h3 class="section-title">Key Financials</h3>
+                    <div class="compare-table-wrap">
+                        ${financialsTable(dataA, dataB, tickerA, tickerB)}
+                    </div>
+                </section>
             </div>
         `;
+
+        // Load the chart asynchronously so it never blocks the main comparison.
+        loadCompareChart(tickerA, tickerB, '3mo');
+    }
+
+    function buildCompareChart(canvas, dates, v1, v2, tickerA, tickerB) {
+        const data = {
+            labels: dates,
+            datasets: [
+                {
+                    label: tickerA,
+                    data: v1,
+                    borderColor: COMPARE_COLOR_A,
+                    backgroundColor: 'transparent',
+                    borderWidth: 2,
+                    tension: 0.3,
+                    fill: false,
+                    pointRadius: 0,
+                    pointHoverRadius: 4,
+                    pointHoverBackgroundColor: COMPARE_COLOR_A,
+                    pointHoverBorderColor: '#fff',
+                    pointHoverBorderWidth: 2
+                },
+                {
+                    label: tickerB,
+                    data: v2,
+                    borderColor: COMPARE_COLOR_B,
+                    backgroundColor: 'transparent',
+                    borderWidth: 2,
+                    tension: 0.3,
+                    fill: false,
+                    pointRadius: 0,
+                    pointHoverRadius: 4,
+                    pointHoverBackgroundColor: COMPARE_COLOR_B,
+                    pointHoverBorderColor: '#fff',
+                    pointHoverBorderWidth: 2
+                }
+            ]
+        };
+        const options = {
+            responsive: true,
+            maintainAspectRatio: false,
+            interaction: { mode: 'index', intersect: false },
+            plugins: {
+                legend: { display: false },
+                tooltip: {
+                    backgroundColor: '#0F1117',
+                    titleColor: '#F0F0F0',
+                    bodyColor: '#F0F0F0',
+                    padding: 10,
+                    displayColors: true,
+                    callbacks: {
+                        label: (ctx) => `${ctx.dataset.label}: ${Number(ctx.parsed.y).toFixed(2)}`
+                    }
+                }
+            },
+            scales: {
+                x: {
+                    grid: { color: '#2A2D3A' },
+                    ticks: {
+                        maxTicksLimit: 6,
+                        maxRotation: 0,
+                        color: '#6B7090',
+                        font: { size: 11 }
+                    }
+                },
+                y: {
+                    grid: { color: '#2A2D3A' },
+                    ticks: {
+                        color: '#6B7090',
+                        font: { size: 11 },
+                        callback: (v) => Number(v).toFixed(0)
+                    },
+                    title: {
+                        display: true,
+                        text: 'Relative Performance (Base = 100)',
+                        color: '#6B7090',
+                        font: { size: 11 }
+                    }
+                }
+            }
+        };
+        if (compareChart) {
+            compareChart.data = data;
+            compareChart.options = options;
+            compareChart.update();
+        } else {
+            const ctx = canvas.getContext('2d');
+            compareChart = new Chart(ctx, { type: 'line', data, options });
+        }
+    }
+
+    async function loadCompareChart(tickerA, tickerB, period) {
+        const canvas = document.getElementById('compareChart');
+        const noteEl = document.getElementById('compareChartNote');
+        if (typeof Chart === 'undefined' || !canvas) {
+            if (noteEl) noteEl.textContent = 'Chart unavailable.';
+            return;
+        }
+        if (noteEl) noteEl.textContent = 'Loading chart…';
+        try {
+            const resp = await fetch(`/api/compare-history?ticker1=${encodeURIComponent(tickerA)}&ticker2=${encodeURIComponent(tickerB)}&period=${encodeURIComponent(period)}`);
+            const data = await resp.json();
+            if (!resp.ok) {
+                if (compareChart) { compareChart.destroy(); compareChart = null; }
+                if (noteEl) noteEl.textContent = data.error || 'No historical data available.';
+                return;
+            }
+            const dates = data.dates || [];
+            const v1 = (data.ticker1 && data.ticker1.values) || [];
+            const v2 = (data.ticker2 && data.ticker2.values) || [];
+            if (!dates.length) {
+                if (compareChart) { compareChart.destroy(); compareChart = null; }
+                if (noteEl) noteEl.textContent = 'No overlapping historical dates.';
+                return;
+            }
+            buildCompareChart(canvas, dates, v1, v2, tickerA, tickerB);
+            if (noteEl) noteEl.textContent = `Normalized to 100 \u00b7 ${dates[0]} to ${dates[dates.length - 1]}`;
+        } catch (err) {
+            if (compareChart) { compareChart.destroy(); compareChart = null; }
+            if (noteEl) noteEl.textContent = 'Unable to load comparison chart.';
+        }
     }
 
     async function runCompare(event) {
@@ -1196,6 +1516,18 @@ document.addEventListener('DOMContentLoaded', () => {
     newSearchBtn.addEventListener('click', backToInput);
 
     compareForm.addEventListener('submit', runCompare);
+
+    compareResults.addEventListener('click', (e) => {
+        const btn = e.target.closest('.compare-period');
+        if (!btn) return;
+        const period = btn.dataset.period;
+        compareResults.querySelectorAll('.compare-period').forEach(b => {
+            b.classList.toggle('active', b === btn);
+        });
+        const tickerA = currentTicker;
+        const tickerB = compareResults.dataset.tickerB;
+        if (tickerA && tickerB) loadCompareChart(tickerA, tickerB, period);
+    });
 
     discoverForm.addEventListener('submit', runDiscover);
 

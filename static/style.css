@@ -1816,6 +1816,279 @@ body {
 }
 
 /* ============================================
+   Compare — redesigned three-block layout
+   ============================================ */
+.compare-results {
+    margin-top: 20px;
+    display: flex;
+    flex-direction: column;
+    gap: 28px;
+}
+
+.cmp-block {
+    background: var(--bg-card);
+    border: 1px solid var(--border-color);
+    border-radius: var(--radius);
+    padding: 22px 24px;
+}
+
+/* --- Block 1: normalized performance chart --- */
+.cmp-chart-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    flex-wrap: wrap;
+    margin-bottom: 14px;
+}
+
+.cmp-chart-legend {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 18px;
+    align-items: center;
+}
+
+.cmp-legend-item {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    font-size: 0.82rem;
+    font-weight: 600;
+    color: var(--text-primary);
+    letter-spacing: 0.3px;
+}
+
+.cmp-legend-dot {
+    width: 9px;
+    height: 9px;
+    border-radius: 50%;
+    flex-shrink: 0;
+}
+
+.cmp-chart-periods {
+    display: inline-flex;
+    background: var(--bg-primary);
+    border: 1px solid var(--border-color);
+    border-radius: 999px;
+    padding: 3px;
+    gap: 2px;
+}
+
+.compare-period {
+    background: transparent;
+    border: none;
+    color: var(--text-secondary);
+    font-size: 0.78rem;
+    font-weight: 600;
+    padding: 5px 14px;
+    border-radius: 999px;
+    cursor: pointer;
+    letter-spacing: 0.4px;
+    transition: background 0.2s, color 0.2s;
+}
+
+.compare-period:hover {
+    color: var(--text-primary);
+}
+
+.compare-period.active {
+    background: var(--bg-card);
+    color: var(--accent);
+    box-shadow: var(--shadow-sm);
+}
+
+.cmp-chart-wrap {
+    position: relative;
+    width: 100%;
+    height: 240px;
+}
+
+.cmp-chart-note {
+    margin-top: 10px;
+    font-size: 0.76rem;
+    color: var(--text-muted);
+    text-align: right;
+    min-height: 1em;
+}
+
+/* --- Block 2: valuation bars --- */
+.cmp-bar-row {
+    display: grid;
+    grid-template-columns: 130px 1fr;
+    align-items: center;
+    gap: 16px;
+    padding: 14px 0;
+    border-bottom: 1px solid var(--border-color);
+}
+
+.cmp-bar-row:last-child {
+    border-bottom: none;
+}
+
+.cmp-bar-label {
+    font-size: 0.84rem;
+    font-weight: 600;
+    color: var(--text-primary);
+    letter-spacing: 0.2px;
+}
+
+.cmp-bar-pair {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    min-width: 0;
+}
+
+.cmp-bar-line {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    min-width: 0;
+}
+
+.cmp-bar-track {
+    flex: 1;
+    min-width: 0;
+    height: 8px;
+    border-radius: 4px;
+    background: #2A2D3A;
+    overflow: hidden;
+}
+
+.cmp-bar-fill {
+    height: 100%;
+    border-radius: 4px;
+    transition: width 0.5s ease;
+}
+
+.cmp-bar-value {
+    font-size: 0.82rem;
+    font-weight: 600;
+    color: var(--text-primary);
+    font-variant-numeric: tabular-nums;
+    min-width: 52px;
+    text-align: right;
+}
+
+.cmp-bar-check {
+    font-size: 0.82rem;
+    font-weight: 700;
+    color: var(--signal-green);
+    width: 14px;
+    text-align: center;
+    flex-shrink: 0;
+}
+
+.cmp-bar-check:not(.is-winner) {
+    visibility: hidden;
+}
+
+/* --- Block 3: key financials table --- */
+.cmp-block .compare-table-wrap {
+    margin-top: 0;
+}
+
+.cmp-fin-table {
+    width: 100%;
+    border-collapse: collapse;
+    table-layout: fixed;
+    border: 1px solid var(--border-color);
+    border-radius: var(--radius-sm);
+    overflow: hidden;
+}
+
+.cmp-fin-table th,
+.cmp-fin-table td {
+    padding: 11px 14px;
+    text-align: center;
+    border-bottom: 1px solid var(--border-color);
+}
+
+.cmp-fin-table th {
+    background: #0F1117;
+    font-size: 11px;
+    font-weight: 700;
+    color: #4A4E6A;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+
+.cmp-fin-table th:first-child,
+.cmp-fin-table td:first-child {
+    text-align: left;
+    width: 34%;
+}
+
+.cmp-fin-table .cmp-th-a {
+    color: #00D4AA;
+}
+
+.cmp-fin-table .cmp-th-b {
+    color: #6C8EFF;
+}
+
+.cmp-fin-table tbody tr.cmp-row-odd {
+    background: #1A1D27;
+}
+
+.cmp-fin-table tbody tr.cmp-row-even {
+    background: #141820;
+}
+
+.cmp-fin-table tbody tr:last-child td {
+    border-bottom: none;
+}
+
+.cmp-fin-table td {
+    font-size: 0.85rem;
+    color: var(--text-secondary);
+    vertical-align: middle;
+    font-variant-numeric: tabular-nums;
+}
+
+.cmp-fin-name {
+    font-weight: 600;
+    color: var(--text-primary);
+    font-size: 0.84rem;
+}
+
+.cmp-na {
+    color: var(--text-muted);
+}
+
+/* 52W position progress bar */
+.cmp-pos {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    width: 100%;
+}
+
+.cmp-pos-pct {
+    font-size: 0.82rem;
+    font-weight: 600;
+    color: var(--text-primary);
+    min-width: 38px;
+    text-align: left;
+}
+
+.cmp-pos-track {
+    flex: 1;
+    min-width: 40px;
+    height: 6px;
+    border-radius: 3px;
+    background: #2A2D3A;
+    overflow: hidden;
+}
+
+.cmp-pos-fill {
+    height: 100%;
+    border-radius: 3px;
+    background: linear-gradient(90deg, #00D4AA, #6C8EFF);
+}
+
+/* ============================================
    Responsive
    ============================================ */
 @media (min-width: 640px) {
@@ -1875,5 +2148,18 @@ body {
 
     .chart-wrap {
         height: 240px;
+    }
+
+    .cmp-bar-row {
+        grid-template-columns: 1fr;
+        gap: 10px;
+    }
+
+    .cmp-bar-value {
+        min-width: 44px;
+    }
+
+    .cmp-chart-header {
+        justify-content: center;
     }
 }
