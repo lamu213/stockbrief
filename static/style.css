@@ -896,12 +896,26 @@ body {
 }
 
 .section-title {
-    font-size: 0.8rem;
-    font-weight: 700;
-    color: var(--text-secondary);
+    position: relative;
+    font-size: 11px;
+    font-weight: 600;
+    color: #4A4E6A;
     text-transform: uppercase;
-    letter-spacing: 0.7px;
+    letter-spacing: 0.12em;
     margin-bottom: 14px;
+    padding-left: 12px;
+}
+
+.section-title::before {
+    content: '';
+    position: absolute;
+    left: 0;
+    top: 50%;
+    transform: translateY(-50%);
+    width: 3px;
+    height: 14px;
+    background: #00D4AA;
+    border-radius: 2px;
 }
 
 /* ============================================
@@ -1280,14 +1294,14 @@ body {
 }
 
 .factor-name {
-    font-weight: 700;
+    font-weight: 500;
     font-size: 0.92rem;
-    color: var(--text-primary);
+    color: #F0F0F0;
 }
 
 .factor-description {
-    font-size: 0.72rem;
-    color: var(--text-muted);
+    font-size: 13px;
+    color: #6B7090;
     line-height: 1.4;
     margin-bottom: 6px;
 }
@@ -1318,36 +1332,36 @@ body {
     display: inline-flex;
     align-items: center;
     justify-content: center;
-    padding: 6px 16px;
-    border-radius: 999px;
-    font-size: 0.72rem;
-    font-weight: 700;
+    text-align: center;
+    min-width: 110px;
+    padding: 4px 12px;
+    border-radius: 20px;
+    font-size: 12px;
+    font-weight: 600;
     text-transform: uppercase;
     letter-spacing: 0.5px;
     white-space: nowrap;
     flex-shrink: 0;
-    color: var(--bg-primary);
 }
 
-.badge_green { background: var(--signal-green); }
-.badge_yellow { background: var(--signal-yellow); }
-.badge_red { background: var(--signal-red); }
-.badge-grey { background: var(--badge-grey); }
+.badge-green { background: #0D2E24; color: #00C48C; }
+.badge-yellow { background: #2E2010; color: #FFB347; }
+.badge-red { background: #2E0D0D; color: #FF5B5B; }
+.badge-grey { background: #1E2030; color: #6B7090; }
 
 /* ============================================
    Section 3: One-sentence snapshot box (full width, accent border)
    ============================================ */
 .snapshot-sentence-box {
-    background: var(--bg-card);
-    border-radius: var(--radius);
-    padding: 28px 32px;
-    border: 2px solid var(--accent);
-    box-shadow: var(--shadow-sm);
+    background: #141820;
+    border-left: 3px solid #00D4AA;
+    border-radius: 0 8px 8px 0;
+    padding: 1.25rem 1.5rem;
 }
 
 .snapshot-sentence-text {
     font-size: 1.3rem;
-    color: var(--text-primary);
+    color: #C8D0E8;
     line-height: 1.55;
     font-style: italic;
     font-weight: 500;
@@ -1751,11 +1765,6 @@ body {
     font-weight: 700;
     color: var(--text-primary);
     font-size: 0.86rem;
-}
-
-.compare-table .badge {
-    font-size: 0.66rem;
-    padding: 5px 12px;
 }
 
 /* ============================================
