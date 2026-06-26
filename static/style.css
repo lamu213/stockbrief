@@ -800,10 +800,10 @@ body {
     flex: 1;
 }
 
-.note-delete {
+.note-edit, .note-delete {
     background: none;
     border: none;
-    font-size: 1.2rem;
+    font-size: 1.1rem;
     color: var(--grey-soft);
     cursor: pointer;
     line-height: 1;
@@ -811,8 +811,48 @@ body {
     transition: color 0.2s;
 }
 
+.note-edit:hover {
+    color: var(--terracotta);
+}
+
 .note-delete:hover {
     color: var(--badge-red);
+}
+
+.note-edit-title {
+    flex: 1;
+    border: 1px solid #E0DCD4;
+    outline: none;
+    font-size: 0.88rem;
+    font-weight: 600;
+    color: var(--charcoal);
+    padding: 4px 8px;
+    border-radius: 6px;
+    background: var(--cream);
+}
+
+.note-edit-title:focus {
+    border-color: var(--terracotta);
+}
+
+.note-edit-content {
+    width: 100%;
+    border: 1px solid #E0DCD4;
+    outline: none;
+    font-size: 0.84rem;
+    color: var(--grey-text);
+    padding: 8px 10px;
+    border-radius: 6px;
+    background: var(--cream);
+    line-height: 1.55;
+    resize: vertical;
+    min-height: 80px;
+    margin-bottom: 6px;
+    font-family: inherit;
+}
+
+.note-edit-content:focus {
+    border-color: var(--terracotta);
 }
 
 .note-content {

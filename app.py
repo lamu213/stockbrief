@@ -902,6 +902,23 @@ def delete_note(note_id):
     return jsonify({'ok': True})
 
 
+@app.route('/api/notes/<int:note_id>', methods=['PUT'])
+@login_required
+def update_note(note_id):
+    note = Note.query.filter_by(id=note_id, user_id=current_user.id).first()
+    if not note:
+        return jsonify({'error': 'Note not found.'}), 404
+    body = request.get_json(silent=True) or {}
+    title = (body.get('title') or '').strip()
+    content = (body.get('content') or '').strip()
+    if title:
+        note.title = title[:255]
+    if content:
+        note.content = content
+    db.session.commit()
+    return jsonify({'ok': True})
+
+
 @app.route('/api/history')
 def history_api():
     ticker = request.args.get('ticker', '').strip().upper()

@@ -914,16 +914,19 @@ document.addEventListener('DOMContentLoaded', () => {
             notes.forEach(n => {
                 const card = document.createElement('div');
                 card.className = 'note-card';
+                card.dataset.id = n.id;
                 const tickerHtml = n.ticker ? `<span class="note-ticker">${escapeHtml(n.ticker)}</span>` : '';
                 card.innerHTML = `
                     <div class="note-header">
                         ${tickerHtml}
                         <span class="note-title">${escapeHtml(n.title)}</span>
+                        <button class="note-edit" data-id="${n.id}" type="button" aria-label="Edit note">&#9998;</button>
                         <button class="note-delete" data-id="${n.id}" type="button" aria-label="Delete note">&times;</button>
                     </div>
                     <p class="note-content">${escapeHtml(n.content)}</p>
                     <span class="note-date">${escapeHtml(n.created_at)}</span>
                 `;
+                card.querySelector('.note-edit').addEventListener('click', () => startEditNote(card, n));
                 card.querySelector('.note-delete').addEventListener('click', async (e) => {
                     const id = e.target.dataset.id;
                     try {
@@ -941,6 +944,60 @@ document.addEventListener('DOMContentLoaded', () => {
         } catch (err) {
             content.innerHTML = '<p class="no-news">Failed to load notes.</p>';
         }
+    }
+
+    function startEditNote(card, note) {
+        const titleEl = card.querySelector('.note-title');
+        const contentEl = card.querySelector('.note-content');
+        if (!titleEl || !contentEl) return;
+        const editBtn = card.querySelector('.note-edit');
+        const deleteBtn = card.querySelector('.note-delete');
+
+        const oldTitle = note.title;
+        const oldContent = note.content;
+
+        titleEl.outerHTML = `<input class="note-edit-title" value="${escapeHtml(oldTitle)}">`;
+        contentEl.outerHTML = `<textarea class="note-edit-content">${escapeHtml(oldContent)}</textarea>`;
+
+        editBtn.innerHTML = '&#10003;';
+        editBtn.setAttribute('aria-label', 'Save note');
+        deleteBtn.innerHTML = '&times;';
+        deleteBtn.setAttribute('aria-label', 'Cancel edit');
+
+        const saveBtn = editBtn;
+        const cancelBtn = deleteBtn;
+        const newTitleEl = card.querySelector('.note-edit-title');
+        const newContentEl = card.querySelector('.note-edit-content');
+        newContentEl.focus();
+
+        const save = async () => {
+            if (!newTitleEl || !document.body.contains(newTitleEl)) return;
+            const newTitle = newTitleEl.value.trim();
+            const newContent = newContentEl.value.trim();
+            if (!newTitle || !newContent) return;
+            saveBtn.onclick = null;
+            cancelBtn.onclick = null;
+            try {
+                await fetch(`/api/notes/${note.id}`, {
+                    method: 'PUT',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ title: newTitle, content: newContent })
+                });
+            } catch (err) {
+                // ignore
+            }
+            loadReminiscences();
+        };
+
+        const cancel = () => {
+            if (!document.body.contains(newTitleEl)) return;
+            saveBtn.onclick = null;
+            cancelBtn.onclick = null;
+            loadReminiscences();
+        };
+
+        saveBtn.onclick = save;
+        cancelBtn.onclick = cancel;
     }
 
     /* ---------- Auth ---------- */
