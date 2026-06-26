@@ -71,7 +71,6 @@
                 <ul class="drawer-nav">
                     <li><button class="drawer-item active" data-view="overview">Overview</button></li>
                     <li><button class="drawer-item" data-view="scorecard">Scorecard</button></li>
-                    <li><button class="drawer-item" data-view="chart">Chart</button></li>
                     <li><button class="drawer-item" data-view="news">News</button></li>
                     <li><button class="drawer-item" data-view="chat">Ask AI</button></li>
                     <li><button class="drawer-item" data-view="compare">Compare</button></li>
@@ -98,20 +97,22 @@
                             <div class="price-change" id="priceChange"></div>
                         </div>
                     </div>
-                </section>
 
-                <div class="causal-separator" role="separator" aria-label="Signals feed into the snapshot below">
-                    <span class="separator-arrow" aria-hidden="true">&darr;</span>
-                    <span class="separator-text">Based on the above signals:</span>
-                </div>
-
-                <section class="snapshot-sentence-box">
-                    <p class="snapshot-sentence-text" id="snapshotSentence"></p>
-                </section>
-
-                <section class="risk-flags card" id="riskSection">
-                    <h3 class="section-title">Risk Flags</h3>
-                    <ul class="risk-list" id="riskList"></ul>
+                    <div class="chart-block">
+                        <div class="chart-tabs" id="chartTabs" role="tablist" aria-label="Price chart period">
+                            <button class="chart-tab" data-period="1mo" type="button" role="tab">1M</button>
+                            <button class="chart-tab active" data-period="3mo" type="button" role="tab" aria-selected="true">3M</button>
+                            <button class="chart-tab" data-period="6mo" type="button" role="tab">6M</button>
+                            <button class="chart-tab" data-period="1y" type="button" role="tab">1Y</button>
+                            <button class="chart-tab" data-period="5y" type="button" role="tab">5Y</button>
+                            <button class="chart-tab" data-period="max" type="button" role="tab">Max</button>
+                        </div>
+                        <div class="chart-wrap">
+                            <canvas id="priceChart" aria-label="Historical price chart"></canvas>
+                        </div>
+                        <div class="chart-legend" id="chartLegend"></div>
+                        <p class="chart-note" id="chartNote"></p>
+                    </div>
                 </section>
             </section>
 
@@ -131,26 +132,14 @@
                         </table>
                     </div>
                 </section>
-            </section>
 
-            <!-- View: Chart -->
-            <section class="view view-chart" id="view-chart">
-                <section class="hero card">
-                    <div class="chart-block">
-                        <div class="chart-tabs" id="chartTabs" role="tablist" aria-label="Price chart period">
-                            <button class="chart-tab" data-period="1mo" type="button" role="tab">1M</button>
-                            <button class="chart-tab active" data-period="3mo" type="button" role="tab" aria-selected="true">3M</button>
-                            <button class="chart-tab" data-period="6mo" type="button" role="tab">6M</button>
-                            <button class="chart-tab" data-period="1y" type="button" role="tab">1Y</button>
-                            <button class="chart-tab" data-period="5y" type="button" role="tab">5Y</button>
-                            <button class="chart-tab" data-period="max" type="button" role="tab">Max</button>
-                        </div>
-                        <div class="chart-wrap">
-                            <canvas id="priceChart" aria-label="Historical price chart"></canvas>
-                        </div>
-                        <div class="chart-legend" id="chartLegend"></div>
-                        <p class="chart-note" id="chartNote"></p>
-                    </div>
+                <section class="snapshot-sentence-box">
+                    <p class="snapshot-sentence-text" id="snapshotSentence"></p>
+                </section>
+
+                <section class="risk-flags card" id="riskSection">
+                    <h3 class="section-title">Risk Flags</h3>
+                    <ul class="risk-list" id="riskList"></ul>
                 </section>
             </section>
 
