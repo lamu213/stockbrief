@@ -936,7 +936,7 @@ document.addEventListener('DOMContentLoaded', () => {
         }
 
         compareBtn.disabled = true;
-        compareResults.innerHTML = '<p class="compare-loading">Loading comparison…</p>';
+        compareResults.innerHTML = '<div class="loading-anim"><svg class="anim-kchart" width="80" height="60" viewBox="0 0 80 60" aria-hidden="true" focusable="false"><line x1="5" y1="52" x2="75" y2="52" stroke="#2A2D3A" stroke-width="1"/><g class="kbar kbar-1"><line x1="12" y1="27" x2="12" y2="32" stroke="#00C48C" stroke-width="1.5"/><rect x="8" y="32" width="8" height="20" fill="#00C48C"/><line x1="12" y1="52" x2="12" y2="57" stroke="#00C48C" stroke-width="1.5"/></g><g class="kbar kbar-2"><line x1="26" y1="33" x2="26" y2="38" stroke="#FF5B5B" stroke-width="1.5"/><rect x="22" y="38" width="8" height="14" fill="#FF5B5B"/><line x1="26" y1="52" x2="26" y2="57" stroke="#FF5B5B" stroke-width="1.5"/></g><g class="kbar kbar-3"><line x1="40" y1="19" x2="40" y2="24" stroke="#00C48C" stroke-width="1.5"/><rect x="36" y="24" width="8" height="28" fill="#00C48C"/><line x1="40" y1="52" x2="40" y2="57" stroke="#00C48C" stroke-width="1.5"/></g><g class="kbar kbar-4"><line x1="54" y1="29" x2="54" y2="34" stroke="#FF5B5B" stroke-width="1.5"/><rect x="50" y="34" width="8" height="18" fill="#FF5B5B"/><line x1="54" y1="52" x2="54" y2="57" stroke="#FF5B5B" stroke-width="1.5"/></g><g class="kbar kbar-5"><line x1="68" y1="23" x2="68" y2="28" stroke="#00C48C" stroke-width="1.5"/><rect x="64" y="28" width="8" height="24" fill="#00C48C"/><line x1="68" y1="52" x2="68" y2="57" stroke="#00C48C" stroke-width="1.5"/></g></svg><p class="compare-loading">Loading comparison\u2026</p></div>';
 
         try {
             const resp = await fetch(`/api/stock/${encodeURIComponent(tickerB)}`);
@@ -1129,7 +1129,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
         const thinkingMsg = document.createElement('div');
         thinkingMsg.className = 'chat-msg chat-msg-assistant';
-        thinkingMsg.innerHTML = '<span class="chat-bubble">Thinking…</span>';
+        thinkingMsg.innerHTML = '<span class="chat-bubble"><svg class="anim-brainwave" width="60" height="24" viewBox="0 0 60 24" aria-hidden="true" focusable="false"><g class="bw-unit bw-unit-1" transform="translate(10,12)"><circle class="bw-dot" cx="0" cy="0" r="4" fill="#00D4AA"/><path class="bw-wave" d="M -8,0 C -4,-8 4,-8 8,0 C 12,8 20,8 24,0" fill="none" stroke="#00D4AA" stroke-width="2"/></g><g class="bw-unit bw-unit-2" transform="translate(30,12)"><circle class="bw-dot" cx="0" cy="0" r="4" fill="#00D4AA"/><path class="bw-wave" d="M -8,0 C -4,-8 4,-8 8,0 C 12,8 20,8 24,0" fill="none" stroke="#00D4AA" stroke-width="2"/></g><g class="bw-unit bw-unit-3" transform="translate(50,12)"><circle class="bw-dot" cx="0" cy="0" r="4" fill="#00D4AA"/><path class="bw-wave" d="M -8,0 C -4,-8 4,-8 8,0 C 12,8 20,8 24,0" fill="none" stroke="#00D4AA" stroke-width="2"/></g></svg></span>';
         chatMessages.appendChild(thinkingMsg);
         chatMessages.scrollTop = chatMessages.scrollHeight;
 

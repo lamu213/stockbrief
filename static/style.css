@@ -548,7 +548,8 @@ body {
 }
 
 /* Drop the standalone padding when the caption lives inside an animation container */
-.loading-anim .discover-loading {
+.loading-anim .discover-loading,
+.loading-anim .compare-loading {
     padding: 0;
 }
 
@@ -644,6 +645,44 @@ body {
     64%  { transform: scaleY(1); opacity: 1; }
     76%  { transform: scaleY(1); opacity: 0; }
     100% { transform: scaleY(1); opacity: 0; }
+}
+
+/* ===== Animation C: Brain-wave thinking indicator ===== */
+.anim-brainwave {
+    display: block;
+}
+
+.anim-brainwave .bw-dot,
+.anim-brainwave .bw-wave {
+    animation-duration: 1.8s;
+    animation-timing-function: ease-in-out;
+    animation-iteration-count: infinite;
+    animation-fill-mode: backwards;
+}
+
+.anim-brainwave .bw-dot  { animation-name: bw-dot; }
+.anim-brainwave .bw-wave { animation-name: bw-wave; }
+
+.anim-brainwave .bw-unit-2 .bw-dot,
+.anim-brainwave .bw-unit-2 .bw-wave { animation-delay: 0.4s; }
+
+.anim-brainwave .bw-unit-3 .bw-dot,
+.anim-brainwave .bw-unit-3 .bw-wave { animation-delay: 0.8s; }
+
+@keyframes bw-dot {
+    0%   { opacity: 0; }
+    20%  { opacity: 1; }
+    40%  { opacity: 1; }
+    60%  { opacity: 0; }
+    100% { opacity: 0; }
+}
+
+@keyframes bw-wave {
+    0%   { opacity: 0; }
+    40%  { opacity: 0; }
+    60%  { opacity: 1; }
+    80%  { opacity: 0; }
+    100% { opacity: 0; }
 }
 
 /* ============================================
