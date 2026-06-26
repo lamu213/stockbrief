@@ -244,6 +244,23 @@ def extract_domain(url):
     return netloc
 
 
+def _safe_num(value):
+    """Return the value as a float if it is a usable number, else None.
+
+    Handles missing keys (None) and pandas/yfinance NaN/Inf values so the
+    JSON response never emits invalid numbers.
+    """
+    if value is None:
+        return None
+    try:
+        f = float(value)
+    except (TypeError, ValueError):
+        return None
+    if math.isnan(f) or math.isinf(f):
+        return None
+    return f
+
+
 def compute_historical_pe(stock, years=5):
     """Compute average trailing P/E over the last `years` years from financial statements."""
     try:
@@ -1092,17 +1109,94 @@ def stock_api(ticker):
         risk_flags = risk_future.result()
         news = news_future.result()
 
+    # Raw valuation numbers and financial stats for the compare view.
+    pe_value = _safe_num(pe_ratio)
+    peg_value = _safe_num(peg_ratio)
+    market_cap = _safe_num(info.get('marketCap'))
+    week_52_high = _safe_num(info.get('fiftyTwoWeekHigh'))
+    week_52_low = _safe_num(info.get('fiftyTwoWeekLow'))
+
+    dividend_yield_raw = _safe_num(info.get('dividendYield'))
+    dividend_yield = round(dividend_yield_raw * 100, 2) if dividend_yield_raw is not None else None
+
+    analyst_upside_value = None
+    target_mean_num = _safe_num(target_mean)
+    current_price_num = _safe_num(current_price)
+    if target_mean_num is not None and current_price_num is not None and current_price_num != 0:
+        analyst_upside_value = round(((target_mean_num - current_price_num) / current_price_num) * 100, 1)
+
     return jsonify({
         'ticker': ticker,
         'company_name': company_name,
         'company_domain': company_domain,
         'current_price': current_price,
+        'pe_value': pe_value,
+        'analyst_upside_value': analyst_upside_value,
+        'peg_value': peg_value,
+        'market_cap': market_cap,
+        'week_52_high': week_52_high,
+        'week_52_low': week_52_low,
+        'dividend_yield': dividend_yield,
         'snapshot': snapshot,
         'factors': factors,
         'snapshot_sentence': snapshot_sentence,
         'risk_flags': risk_flags,
         'news': news,
         'as_of': as_of
+    })
+
+
+@app.route('/api/compare-history')
+def compare_history_api():
+    """Return normalized historical close prices for two tickers for charting.
+
+    Each price series is divided by its first value and multiplied by 100, so
+    both series start at 100. The two series are aligned on the intersection
+    of their trading dates.
+    """
+    ticker1 = request.args.get('ticker1', '').strip().upper()
+    ticker2 = request.args.get('ticker2', '').strip().upper()
+    period = request.args.get('period', '3mo')
+    if not ticker1 or not ticker2:
+        return jsonify({'error': 'Both ticker1 and ticker2 parameters are required.'}), 400
+    valid_periods = {'1mo', '3mo', '6mo', '1y', '5y', 'max'}
+    if period not in valid_periods:
+        period = '3mo'
+
+    def fetch_close(ticker):
+        try:
+            stock = yf.Ticker(ticker)
+            hist = stock.history(period=period)
+        except Exception:
+            return {}
+        if hist is None or hist.empty:
+            return {}
+        series = {}
+        for date, price in hist['Close'].items():
+            if pd.notna(price):
+                series[date.strftime('%Y-%m-%d')] = float(price)
+        return series
+
+    series1 = fetch_close(ticker1)
+    series2 = fetch_close(ticker2)
+    if not series1:
+        return jsonify({'error': f'No historical price data available for {ticker1}.'}), 404
+    if not series2:
+        return jsonify({'error': f'No historical price data available for {ticker2}.'}), 404
+
+    common_dates = sorted(set(series1.keys()) & set(series2.keys()))
+    if not common_dates:
+        return jsonify({'error': 'No overlapping historical dates between the two tickers.'}), 404
+
+    base1 = series1[common_dates[0]]
+    base2 = series2[common_dates[0]]
+    values1 = [round((series1[d] / base1) * 100, 2) for d in common_dates]
+    values2 = [round((series2[d] / base2) * 100, 2) for d in common_dates]
+
+    return jsonify({
+        'dates': common_dates,
+        'ticker1': {'ticker': ticker1, 'values': values1},
+        'ticker2': {'ticker': ticker2, 'values': values2}
     })
 
 
