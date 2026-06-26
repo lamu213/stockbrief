@@ -404,7 +404,7 @@ document.addEventListener('DOMContentLoaded', () => {
             if (sourceEl && data.source) sourceEl.textContent = data.source;
             if (badgeCell) badgeCell.innerHTML = renderBadge(a.badge, a.text);
 
-            // Update the signal class, then expand the row so the new data is visible
+            // Update signal class on the row, then expand so new data is visible
             rowEl.classList.remove('signal-green', 'signal-yellow', 'signal-red', 'signal-grey');
             rowEl.classList.add(`signal-${a.badge || 'grey'}`);
             rowEl.classList.remove('collapsed');
