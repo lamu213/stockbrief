@@ -895,6 +895,43 @@ body {
     color: var(--grey-soft);
 }
 
+/* Watch button */
+.watch-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    background: none;
+    border: 1.5px solid #E0DCD4;
+    color: var(--grey-soft);
+    padding: 5px 12px;
+    border-radius: 999px;
+    font-size: 0.75rem;
+    font-weight: 600;
+    cursor: pointer;
+    margin-top: 8px;
+    transition: border-color 0.2s, color 0.2s, background 0.2s;
+}
+
+.watch-btn:hover {
+    border-color: var(--terracotta);
+    color: var(--terracotta);
+}
+
+.watch-btn.watched {
+    border-color: var(--terracotta);
+    color: var(--terracotta);
+    background: rgba(201, 100, 66, 0.06);
+}
+
+.watch-btn.watched .watch-star {
+    color: var(--terracotta);
+}
+
+.watch-star {
+    font-size: 0.9rem;
+    line-height: 1;
+}
+
 /* ============================================
    Chart
    ============================================ */

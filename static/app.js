@@ -22,6 +22,9 @@ document.addEventListener('DOMContentLoaded', () => {
     let authMode = 'signin';
     let currentUser = null;
 
+    const watchBtn = document.getElementById('watchBtn');
+    let watchedTickers = new Set();
+
     const logoWrap = document.getElementById('logoWrap');
     const companyLogo = document.getElementById('companyLogo');
     const logoFallback = document.getElementById('logoFallback');
@@ -476,6 +479,7 @@ document.addEventListener('DOMContentLoaded', () => {
         inputView.classList.add('hidden');
         topBarTicker.textContent = stockData.ticker;
         switchView('overview');
+        checkWatchStatus(stockData.ticker);
         window.scrollTo({ top: 0, behavior: 'smooth' });
 
         /* Load chart + compute today's change from the default 3M history */
@@ -889,7 +893,68 @@ document.addEventListener('DOMContentLoaded', () => {
         try {
             await fetch('/api/logout', { method: 'POST' });
             currentUser = null;
+            watchedTickers.clear();
             updateAuthUI();
+            updateWatchBtn();
+        } catch (err) {
+            // ignore
+        }
+    }
+
+    /* ---------- Watch (stock favorites) ---------- */
+
+    async function checkWatchStatus(ticker) {
+        if (!currentUser) {
+            updateWatchBtn(false);
+            return;
+        }
+        try {
+            const resp = await fetch(`/api/watch/${encodeURIComponent(ticker)}/status`);
+            if (resp.ok) {
+                const data = await resp.json();
+                if (data.watched) watchedTickers.add(ticker);
+                else watchedTickers.delete(ticker);
+            }
+        } catch (err) {
+            // ignore
+        }
+        updateWatchBtn();
+    }
+
+    function updateWatchBtn(watched) {
+        if (watched === undefined) {
+            watched = currentTicker && watchedTickers.has(currentTicker);
+        }
+        if (watched) {
+            watchBtn.classList.add('watched');
+            watchBtn.querySelector('.watch-label').textContent = 'Watching';
+        } else {
+            watchBtn.classList.remove('watched');
+            watchBtn.querySelector('.watch-label').textContent = 'Watch';
+        }
+    }
+
+    async function toggleWatch() {
+        if (!currentUser) {
+            openAuthModal('signin');
+            return;
+        }
+        if (!currentTicker) return;
+        const ticker = currentTicker;
+        const isWatched = watchedTickers.has(ticker);
+        try {
+            if (isWatched) {
+                await fetch(`/api/watch/${encodeURIComponent(ticker)}`, { method: 'DELETE' });
+                watchedTickers.delete(ticker);
+            } else {
+                await fetch('/api/watch', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ ticker })
+                });
+                watchedTickers.add(ticker);
+            }
+            updateWatchBtn();
         } catch (err) {
             // ignore
         }
@@ -957,6 +1022,7 @@ document.addEventListener('DOMContentLoaded', () => {
     tabSignin.addEventListener('click', () => openAuthModal('signin'));
     tabRegister.addEventListener('click', () => openAuthModal('register'));
     authForm.addEventListener('submit', handleAuthSubmit);
+    watchBtn.addEventListener('click', toggleWatch);
 
     checkAuth();
     tickerInput.focus();

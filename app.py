@@ -814,6 +814,52 @@ def me_api():
     return jsonify({'email': None})
 
 
+# ============================================================================
+# Watch (stock favorites) routes
+# ============================================================================
+
+@app.route('/api/watch', methods=['GET'])
+@login_required
+def get_watch():
+    watches = Watch.query.filter_by(user_id=current_user.id).order_by(Watch.added_at.desc()).all()
+    return jsonify({'tickers': [w.ticker for w in watches]})
+
+
+@app.route('/api/watch', methods=['POST'])
+@login_required
+def add_watch():
+    body = request.get_json(silent=True) or {}
+    ticker = (body.get('ticker') or '').strip().upper()
+    if not ticker:
+        return jsonify({'error': 'Ticker is required.'}), 400
+    existing = Watch.query.filter_by(user_id=current_user.id, ticker=ticker).first()
+    if existing:
+        return jsonify({'ok': True, 'ticker': ticker, 'watched': True})
+    watch = Watch(user_id=current_user.id, ticker=ticker)
+    db.session.add(watch)
+    db.session.commit()
+    return jsonify({'ok': True, 'ticker': ticker, 'watched': True})
+
+
+@app.route('/api/watch/<ticker>', methods=['DELETE'])
+@login_required
+def remove_watch(ticker):
+    ticker = ticker.strip().upper()
+    watch = Watch.query.filter_by(user_id=current_user.id, ticker=ticker).first()
+    if watch:
+        db.session.delete(watch)
+        db.session.commit()
+    return jsonify({'ok': True, 'ticker': ticker, 'watched': False})
+
+
+@app.route('/api/watch/<ticker>/status', methods=['GET'])
+@login_required
+def check_watch(ticker):
+    ticker = ticker.strip().upper()
+    existing = Watch.query.filter_by(user_id=current_user.id, ticker=ticker).first()
+    return jsonify({'watched': existing is not None})
+
+
 @app.route('/api/history')
 def history_api():
     ticker = request.args.get('ticker', '').strip().upper()
