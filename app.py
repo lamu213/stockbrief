@@ -4,6 +4,7 @@ import re
 import json
 from datetime import datetime, timedelta
 from urllib.parse import urlparse
+from concurrent.futures import ThreadPoolExecutor
 from flask import Flask, render_template, jsonify, request
 import yfinance as yf
 import requests
@@ -506,69 +507,67 @@ def generate_valuation_snapshot(company_name, factors, next_earnings_days):
     return f"{company_name} is trading at a {valuation} with {technical}, {connector} {risk}."
 
 
+def _risk_fallback(name, raw):
+    """Rule-based fallback explanation for a red risk signal."""
+    if name == 'P/E Ratio':
+        return (
+            "You are paying more per dollar of earnings than the stock's own history and "
+            "industry peers typically command. If growth slows, expensive valuations often compress first."
+        )
+    elif name == 'Analyst Price Target':
+        return (
+            "Professional analysts on average expect the price to fall from here, which suggests "
+            "the market may already be pricing in optimistic assumptions."
+        )
+    elif name == 'PEG Ratio':
+        return (
+            "Expected earnings growth does not justify the current price. You may be overpaying "
+            "for future profits that may not materialize."
+        )
+    elif name == 'RSI (14-day)':
+        if raw and raw > 80:
+            return (
+                "The stock has risen very fast and may be due for a pullback or consolidation "
+                "as early investors take profits."
+            )
+        else:
+            return (
+                "Heavy selling has pushed the stock into oversold territory. While reversals can happen, "
+                "intense selling often reflects real concerns."
+            )
+    elif name == 'Earnings Date':
+        return (
+            "A major earnings report is due within days. Results can trigger large price swings "
+            "regardless of the stock's longer-term trend."
+        )
+    return "This signal indicates elevated risk for the stock."
+
+
 def get_risk_explanations(factors):
     """Provide plain-English 'why it matters' explanations for red scorecard signals."""
     red_factors = [f for f in factors if f['badge'] == 'red']
-    explanations = []
-    for f in red_factors:
-        name = f['name']
+    if not red_factors:
+        return []
 
-        system_prompt = (
-            "You are a concise equity research analyst. In one short sentence, explain "
-            "why this red risk signal matters to a retail investor. Plain English, no disclaimers."
-        )
+    system_prompt = (
+        "You are a concise equity research analyst. In one short sentence, explain "
+        "why this red risk signal matters to a retail investor. Plain English, no disclaimers."
+    )
+
+    def try_ai(f):
         raw = f.get('raw')
-        user_prompt = f"Factor: {name}\nBadge: red\nRaw value: {raw}\nWrite one sentence."
-        ai = aiand_chat(system_prompt, user_prompt)
-        if ai:
-            explanations.append({'name': name, 'explanation': ai})
-            continue
+        user_prompt = f"Factor: {f['name']}\nBadge: red\nRaw value: {raw}\nWrite one sentence."
+        return aiand_chat(system_prompt, user_prompt)
 
-        if name == 'P/E Ratio':
-            explanations.append({
-                'name': name,
-                'explanation': (
-                    "You are paying more per dollar of earnings than the stock's own history and "
-                    "industry peers typically command. If growth slows, expensive valuations often compress first."
-                )
-            })
-        elif name == 'Analyst Price Target':
-            explanations.append({
-                'name': name,
-                'explanation': (
-                    "Professional analysts on average expect the price to fall from here, which suggests "
-                    "the market may already be pricing in optimistic assumptions."
-                )
-            })
-        elif name == 'PEG Ratio':
-            explanations.append({
-                'name': name,
-                'explanation': (
-                    "Expected earnings growth does not justify the current price. You may be overpaying "
-                    "for future profits that may not materialize."
-                )
-            })
-        elif name == 'RSI (14-day)':
-            raw = f.get('raw')
-            if raw and raw > 80:
-                explanation = (
-                    "The stock has risen very fast and may be due for a pullback or consolidation "
-                    "as early investors take profits."
-                )
-            else:
-                explanation = (
-                    "Heavy selling has pushed the stock into oversold territory. While reversals can happen, "
-                    "intense selling often reflects real concerns."
-                )
-            explanations.append({'name': name, 'explanation': explanation})
-        elif name == 'Earnings Date':
-            explanations.append({
-                'name': name,
-                'explanation': (
-                    "A major earnings report is due within days. Results can trigger large price swings "
-                    "regardless of the stock's longer-term trend."
-                )
-            })
+    with ThreadPoolExecutor(max_workers=min(5, len(red_factors))) as ex:
+        ai_results = list(ex.map(try_ai, red_factors))
+
+    explanations = []
+    for f, ai in zip(red_factors, ai_results):
+        name = f['name']
+        raw = f.get('raw')
+        explanation = ai if ai else _risk_fallback(name, raw)
+        explanations.append({'name': name, 'explanation': explanation})
     return explanations
 
 
@@ -735,8 +734,18 @@ def fetch_news(ticker, company_name=''):
                 'publishedAt': datetime.fromtimestamp(a.get('datetime', 0)).strftime('%Y-%m-%d'),
                 'url': a.get('url', ''),
                 'source': source,
-                'ai_analysis': generate_news_analysis(headline, summary)
+                'headline': headline,
+                'summary': summary
             })
+        with ThreadPoolExecutor(max_workers=min(5, len(results))) as ex:
+            analyses = list(ex.map(
+                lambda r: generate_news_analysis(r['headline'], r['summary']),
+                results
+            ))
+        for r, analysis in zip(results, analyses):
+            r['ai_analysis'] = analysis
+            del r['headline']
+            del r['summary']
         if unfiltered_fallback:
             for r in results:
                 r['source'] = r['source'] + ' (news may not be directly related)'
@@ -921,9 +930,13 @@ def stock_api(ticker):
     ]
 
     next_earnings_days = earnings.get('raw')
-    snapshot_sentence = generate_valuation_snapshot(company_name, factors, next_earnings_days)
-    risk_flags = get_risk_explanations(factors)
-    news = fetch_news(ticker, company_name)
+    with ThreadPoolExecutor(max_workers=3) as ex:
+        snapshot_future = ex.submit(generate_valuation_snapshot, company_name, factors, next_earnings_days)
+        risk_future = ex.submit(get_risk_explanations, factors)
+        news_future = ex.submit(fetch_news, ticker, company_name)
+        snapshot_sentence = snapshot_future.result()
+        risk_flags = risk_future.result()
+        news = news_future.result()
 
     return jsonify({
         'ticker': ticker,
