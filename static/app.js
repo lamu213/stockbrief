@@ -263,6 +263,14 @@ document.addEventListener('DOMContentLoaded', () => {
 
     /* ---------- Scorecard table ---------- */
 
+    const FACTOR_DESCRIPTIONS = {
+        'P/E Ratio': "Compares stock price to earnings \u2014 higher means you're paying more for each dollar of profit.",
+        'Analyst Price Target': "Wall Street consensus on where the stock should trade in 12 months.",
+        'PEG Ratio': "P/E adjusted for growth rate \u2014 below 1 is cheap, above 2 means growth may not justify the price.",
+        'RSI (14-day)': "Momentum indicator \u2014 above 70 is overbought, below 30 is oversold, 30\u201370 is neutral.",
+        'Earnings Date': "Next scheduled earnings report \u2014 results can move the stock significantly in either direction."
+    };
+
     function pePeriodSelect(selected) {
         const opts = [3, 5, 10].map(y => {
             const isSel = y === selected ? 'selected' : '';
@@ -291,9 +299,12 @@ document.addEventListener('DOMContentLoaded', () => {
                        <span class="factor-name">${escapeHtml(f.name)}</span>
                    </div>`;
 
+            const description = FACTOR_DESCRIPTIONS[f.name] || '';
+
             tr.innerHTML = `
                 <td>
                     ${head}
+                    ${description ? `<div class="factor-description">${escapeHtml(description)}</div>` : ''}
                     <div class="factor-explanation">${f.explanation || 'No explanation available.'}</div>
                     ${f.source ? `<span class="source-label">${escapeHtml(f.source)}</span>` : ''}
                 </td>

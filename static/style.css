@@ -560,6 +560,13 @@ body {
     color: var(--charcoal);
 }
 
+.factor-description {
+    font-size: 0.72rem;
+    color: var(--grey-soft);
+    line-height: 1.4;
+    margin-bottom: 6px;
+}
+
 .factor-explanation {
     font-size: 0.82rem;
     color: var(--grey-text);
