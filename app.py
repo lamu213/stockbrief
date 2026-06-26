@@ -770,8 +770,35 @@ def history_api():
         return jsonify({'error': 'Unable to fetch historical prices from Yahoo Finance.'}), 500
     if hist is None or hist.empty:
         return jsonify({'error': 'No historical price data available for this ticker.'}), 404
-    dates = [d.strftime('%Y-%m-%d') for d in hist.index]
-    prices = [round(float(c), 2) for c in hist['Close']]
+
+    # Fetch extra history before the requested range to warm up the moving
+    # averages so they start from the first visible day without null gaps.
+    warmup_days = 90
+    warmup_hist = None
+    try:
+        if len(hist.index) > 0:
+            warmup_end = hist.index[0]
+            warmup_start = warmup_end - timedelta(days=warmup_days)
+            warmup_hist = stock.history(start=warmup_start, end=warmup_end)
+    except Exception:
+        warmup_hist = None
+
+    def to_lists(df):
+        return [d.strftime('%Y-%m-%d') for d in df.index], [round(float(c), 2) for c in df['Close']]
+
+    full_dates, full_prices = to_lists(hist)
+    if warmup_hist is not None and not warmup_hist.empty:
+        w_dates, w_prices = to_lists(warmup_hist)
+        # Only keep warmup points strictly before the requested range, then prepend.
+        first_date = full_dates[0]
+        warmup_dates = []
+        warmup_prices = []
+        for d, p in zip(w_dates, w_prices):
+            if d < first_date:
+                warmup_dates.append(d)
+                warmup_prices.append(p)
+        full_dates = warmup_dates + full_dates
+        full_prices = warmup_prices + full_prices
 
     def moving_average(values, window):
         result = []
@@ -783,9 +810,17 @@ def history_api():
                 result.append(round(sum(window_vals) / window, 2))
         return result
 
-    ma5 = moving_average(prices, 5)
-    ma20 = moving_average(prices, 20)
-    ma50 = moving_average(prices, 50)
+    full_ma5 = moving_average(full_prices, 5)
+    full_ma20 = moving_average(full_prices, 20)
+    full_ma50 = moving_average(full_prices, 50)
+
+    # Trim back to the originally requested range.
+    trim = len(full_dates) - len(hist.index)
+    dates = full_dates[trim:]
+    prices = full_prices[trim:]
+    ma5 = full_ma5[trim:]
+    ma20 = full_ma20[trim:]
+    ma50 = full_ma50[trim:]
 
     return jsonify({
         'ticker': ticker,
