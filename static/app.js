@@ -21,6 +21,14 @@ document.addEventListener('DOMContentLoaded', () => {
     const riskList = document.getElementById('riskList');
     const newsList = document.getElementById('newsList');
 
+    const chatMessages = document.getElementById('chatMessages');
+    const chatForm = document.getElementById('chatForm');
+    const chatInput = document.getElementById('chatInput');
+    const chatSendBtn = document.getElementById('chatSendBtn');
+    const chatHeader = document.getElementById('chatHeader');
+    const chatPlaceholder = document.getElementById('chatPlaceholder');
+    let chatHistory = [];
+
     const chartTabs = document.getElementById('chartTabs');
     const chartCanvas = document.getElementById('priceChart');
     const chartNote = document.getElementById('chartNote');
@@ -429,22 +437,12 @@ document.addEventListener('DOMContentLoaded', () => {
                 item.className = 'news-item';
                 const published = n.publishedAt || '';
                 const source = n.source || 'Finnhub';
-                const analysis = n.ai_analysis || '';
                 const titleHtml = n.url
                     ? `<a href="${escapeHtml(n.url)}" target="_blank" rel="noopener" class="news-title">${escapeHtml(n.title || '')}</a>`
                     : `<span class="news-title">${escapeHtml(n.title || '')}</span>`;
-                const analysisHtml = analysis
-                    ? `<div class="ai-analysis-box">
-                           <span class="ai-analysis-label">AI Analysis</span>
-                           <p class="ai-analysis-text">${escapeHtml(analysis)}</p>
-                       </div>`
-                    : '';
                 item.innerHTML = `
-                    <div class="news-left">
-                        ${titleHtml}
-                        <span class="news-date">${escapeHtml(source)}${published ? ' &middot; ' + escapeHtml(published) : ''}</span>
-                    </div>
-                    <div class="news-right">${analysisHtml}</div>
+                    ${titleHtml}
+                    <span class="news-date">${escapeHtml(source)}${published ? ' &middot; ' + escapeHtml(published) : ''}</span>
                 `;
                 newsList.appendChild(item);
             });
@@ -509,6 +507,9 @@ document.addEventListener('DOMContentLoaded', () => {
 
         /* News */
         renderNews(stockData.news || []);
+
+        /* Reset chat for new ticker */
+        resetChat(stockData.ticker);
 
         /* Reset tabs to default 3M */
         chartTabs.querySelectorAll('.chart-tab').forEach(t => {
@@ -731,6 +732,64 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     }
 
+    /* ---------- Chat panel ---------- */
+
+    function resetChat(ticker) {
+        chatHistory = [];
+        chatMessages.innerHTML = `<p class="chat-placeholder" id="chatPlaceholder">Ask me anything about ${escapeHtml(ticker)}'s news, financials, or outlook.</p>`;
+        chatInput.value = '';
+        chatSendBtn.disabled = false;
+    }
+
+    function appendChatMsg(role, text) {
+        const placeholder = document.getElementById('chatPlaceholder');
+        if (placeholder) placeholder.remove();
+        const msg = document.createElement('div');
+        msg.className = `chat-msg chat-msg-${role}`;
+        msg.innerHTML = `<span class="chat-bubble">${escapeHtml(text)}</span>`;
+        chatMessages.appendChild(msg);
+        chatMessages.scrollTop = chatMessages.scrollHeight;
+    }
+
+    async function sendChat(event) {
+        if (event) event.preventDefault();
+        const message = chatInput.value.trim();
+        if (!message || !currentTicker) return;
+
+        appendChatMsg('user', message);
+        chatHistory.push({ role: 'user', content: message });
+        chatInput.value = '';
+        chatSendBtn.disabled = true;
+
+        const thinkingMsg = document.createElement('div');
+        thinkingMsg.className = 'chat-msg chat-msg-assistant';
+        thinkingMsg.innerHTML = '<span class="chat-bubble">Thinking…</span>';
+        chatMessages.appendChild(thinkingMsg);
+        chatMessages.scrollTop = chatMessages.scrollHeight;
+
+        try {
+            const resp = await fetch('/api/chat', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ message, ticker: currentTicker, history: chatHistory.slice(0, -1) })
+            });
+            const data = await resp.json();
+            thinkingMsg.remove();
+            if (resp.ok && data.reply) {
+                appendChatMsg('assistant', data.reply);
+                chatHistory.push({ role: 'assistant', content: data.reply });
+            } else {
+                appendChatMsg('assistant', data.error || "Sorry, I couldn't generate a response.");
+            }
+        } catch (err) {
+            thinkingMsg.remove();
+            appendChatMsg('assistant', 'Network error. Please try again.');
+        } finally {
+            chatSendBtn.disabled = false;
+            chatInput.focus();
+        }
+    }
+
     /* ---------- Events ---------- */
 
     generateBtn.addEventListener('click', () => generateBrief());
@@ -765,6 +824,8 @@ document.addEventListener('DOMContentLoaded', () => {
     compareForm.addEventListener('submit', runCompare);
 
     discoverForm.addEventListener('submit', runDiscover);
+
+    chatForm.addEventListener('submit', sendChat);
 
     tickerInput.focus();
 });

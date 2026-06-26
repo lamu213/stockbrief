@@ -122,10 +122,22 @@
                 <ul class="risk-list" id="riskList"></ul>
             </section>
 
-            <!-- ============ News ============ -->
-            <section class="news card">
-                <h3 class="section-title">Recent News</h3>
-                <div class="news-list" id="newsList"></div>
+            <!-- ============ News + Chat (two columns) ============ -->
+            <section class="news-chat-section">
+                <div class="news-chat-left">
+                    <h3 class="section-title">Recent News</h3>
+                    <div class="news-scroll" id="newsList"></div>
+                </div>
+                <div class="news-chat-right">
+                    <h3 class="section-title" id="chatHeader">Ask about this stock</h3>
+                    <div class="chat-messages" id="chatMessages">
+                        <p class="chat-placeholder" id="chatPlaceholder"></p>
+                    </div>
+                    <form class="chat-form" id="chatForm">
+                        <input type="text" id="chatInput" placeholder="Ask a question..." autocomplete="off" aria-label="Chat message">
+                        <button type="submit" id="chatSendBtn">Send</button>
+                    </form>
+                </div>
             </section>
 
             <!-- ============ Compare two stocks ============ -->

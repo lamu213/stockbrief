@@ -732,37 +732,25 @@ def fetch_news(ticker, company_name=''):
         tier2 = [a for a in articles if headline_plus_summary_match(a)]
 
         if len(tier1) >= 2:
-            recent = tier1[:5]
+            recent = tier1[:15]
             unfiltered_fallback = False
         elif tier2:
-            recent = tier2[:5]
+            recent = tier2[:15]
             unfiltered_fallback = False
         else:
-            # No good matches — return top 3 unfiltered with a caveat
-            recent = articles[:3]
+            # No good matches — return top 5 unfiltered with a caveat
+            recent = articles[:5]
             unfiltered_fallback = True
         results = []
         for a in recent:
             headline = a.get('headline', '')
-            summary = a.get('summary', '')
             source = a.get('source', '') or 'Finnhub'
             results.append({
                 'title': headline,
                 'publishedAt': datetime.fromtimestamp(a.get('datetime', 0)).strftime('%Y-%m-%d'),
                 'url': a.get('url', ''),
-                'source': source,
-                'headline': headline,
-                'summary': summary
+                'source': source
             })
-        with ThreadPoolExecutor(max_workers=min(5, len(results))) as ex:
-            analyses = list(ex.map(
-                lambda r: generate_news_analysis(r['headline'], r['summary']),
-                results
-            ))
-        for r, analysis in zip(results, analyses):
-            r['ai_analysis'] = analysis
-            del r['headline']
-            del r['summary']
         if unfiltered_fallback:
             for r in results:
                 r['source'] = r['source'] + ' (news may not be directly related)'
@@ -1050,6 +1038,46 @@ def suggest_stocks_api():
         return jsonify({'error': "Couldn't generate suggestions. Try a different topic."}), 502
 
     return jsonify({'suggestions': cleaned})
+
+
+@app.route('/api/chat', methods=['POST'])
+def chat_api():
+    body = request.get_json(silent=True) or {}
+    message = (body.get('message') or '').strip()
+    ticker = (body.get('ticker') or '').strip().upper()
+    history = body.get('history') or []
+    if not message or not ticker:
+        return jsonify({'error': 'Message and ticker are required.'}), 400
+
+    try:
+        stock = yf.Ticker(ticker)
+        info = stock.info
+        company_name = info.get('longName') or info.get('shortName') or ticker
+    except Exception:
+        company_name = ticker
+
+    news = fetch_news(ticker, company_name)
+    headlines = '; '.join(n.get('title', '') for n in news[:5]) if news else 'No recent news available.'
+
+    system_prompt = (
+        f"You are a helpful stock analyst assistant. The user is asking about {company_name} (ticker: {ticker}). "
+        f"Recent news headlines: {headlines}. "
+        "Answer concisely in plain English. If you don't know something, say so. No disclaimers, no markdown."
+    )
+
+    conversation = f"User question: {message}"
+    for h in history[-10:]:
+        role = h.get('role', 'user')
+        content = h.get('content', '')
+        if role == 'assistant':
+            conversation = f"Assistant: {content}\n{conversation}"
+        else:
+            conversation = f"User: {content}\n{conversation}"
+
+    reply = aiand_chat(system_prompt, conversation, max_tokens=800)
+    if reply:
+        return jsonify({'reply': reply})
+    return jsonify({'error': "Couldn't generate a response. Please try again."}), 502
 
 
 if __name__ == '__main__':
