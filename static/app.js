@@ -658,3 +658,4 @@ document.addEventListener('DOMContentLoaded', () => {
 
     tickerInput.focus();
 });
+
