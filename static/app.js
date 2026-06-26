@@ -29,6 +29,15 @@ document.addEventListener('DOMContentLoaded', () => {
     const chatPlaceholder = document.getElementById('chatPlaceholder');
     let chatHistory = [];
 
+    const drawer = document.getElementById('drawer');
+    const drawerOverlay = document.getElementById('drawerOverlay');
+    const menuToggleBtn = document.getElementById('menuToggleBtn');
+    const drawerCloseBtn = document.getElementById('drawerCloseBtn');
+    const topBarTicker = document.getElementById('topBarTicker');
+    const newsPromptBtn = document.getElementById('newsPromptBtn');
+    const drawerItems = document.querySelectorAll('.drawer-item');
+    const views = document.querySelectorAll('.view');
+
     const chartTabs = document.getElementById('chartTabs');
     const chartCanvas = document.getElementById('priceChart');
     const chartNote = document.getElementById('chartNote');
@@ -450,6 +459,8 @@ document.addEventListener('DOMContentLoaded', () => {
         setLoading(false);
         briefContent.classList.remove('hidden');
         inputView.classList.add('hidden');
+        topBarTicker.textContent = stockData.ticker;
+        switchView('overview');
         window.scrollTo({ top: 0, behavior: 'smooth' });
 
         /* Load chart + compute today's change from the default 3M history */
@@ -766,8 +777,48 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     }
 
+    /* ---------- Drawer navigation ---------- */
+
+    function openDrawer() {
+        drawer.classList.add('open');
+        drawerOverlay.classList.add('open');
+    }
+
+    function closeDrawer() {
+        drawer.classList.remove('open');
+        drawerOverlay.classList.remove('open');
+    }
+
+    function switchView(viewName) {
+        views.forEach(v => v.classList.remove('active'));
+        const target = document.getElementById(`view-${viewName}`);
+        if (target) target.classList.add('active');
+        drawerItems.forEach(item => {
+            item.classList.toggle('active', item.dataset.view === viewName);
+        });
+        window.scrollTo({ top: 0, behavior: 'smooth' });
+    }
+
     /* ---------- Events ---------- */
 
+    menuToggleBtn.addEventListener('click', openDrawer);
+    drawerCloseBtn.addEventListener('click', closeDrawer);
+    drawerOverlay.addEventListener('click', closeDrawer);
+
+    drawerItems.forEach(item => {
+        item.addEventListener('click', () => {
+            switchView(item.dataset.view);
+            closeDrawer();
+        });
+    });
+
+    newsPromptBtn.addEventListener('click', () => {
+        switchView('chat');
+        if (currentTicker) {
+            chatInput.value = `Summarize the recent news for ${currentTicker}`;
+            chatForm.requestSubmit();
+        }
+    });
     generateBtn.addEventListener('click', () => generateBrief());
 
     tickerInput.addEventListener('keydown', (e) => {

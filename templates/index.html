@@ -50,85 +50,125 @@
 
         <!-- ============ Results ============ -->
         <main id="briefContent" class="brief-content hidden">
-            <button id="newSearchBtn" class="new-search" type="button">&larr; New search</button>
-
-            <!-- Hero -->
-            <section class="hero card">
-                <div class="hero-top">
-                    <div class="hero-id">
-                        <div class="logo-wrap" id="logoWrap">
-                            <img id="companyLogo" class="company-logo" alt="" />
-                            <span class="logo-fallback" id="logoFallback"></span>
-                        </div>
-                        <div class="hero-text">
-                            <h2 class="company-name" id="companyName"></h2>
-                            <span class="ticker-symbol" id="tickerSymbol"></span>
-                            <p class="snapshot-text" id="snapshotText"></p>
-                        </div>
-                    </div>
-                    <div class="price-block">
-                        <div class="current-price" id="currentPrice"></div>
-                        <div class="price-change" id="priceChange"></div>
-                    </div>
-                </div>
-
-                <div class="chart-block">
-                    <div class="chart-tabs" id="chartTabs" role="tablist" aria-label="Price chart period">
-                        <button class="chart-tab" data-period="1mo" type="button" role="tab">1M</button>
-                        <button class="chart-tab active" data-period="3mo" type="button" role="tab" aria-selected="true">3M</button>
-                        <button class="chart-tab" data-period="6mo" type="button" role="tab">6M</button>
-                        <button class="chart-tab" data-period="1y" type="button" role="tab">1Y</button>
-                        <button class="chart-tab" data-period="5y" type="button" role="tab">5Y</button>
-                        <button class="chart-tab" data-period="max" type="button" role="tab">Max</button>
-                    </div>
-                    <div class="chart-wrap">
-                        <canvas id="priceChart" aria-label="Historical price chart"></canvas>
-                    </div>
-                    <div class="chart-legend" id="chartLegend"></div>
-                    <p class="chart-note" id="chartNote"></p>
-                </div>
-            </section>
-
-            <!-- ============ Section 1: Five-factor scorecard (full width) ============ -->
-            <section class="card scorecard-section">
-                <h3 class="section-title">Five-Factor Scorecard</h3>
-                <div class="scorecard-table-wrap">
-                    <table class="scorecard-table">
-                        <thead>
-                            <tr>
-                                <th scope="col">Factor</th>
-                                <th scope="col">Signal</th>
-                            </tr>
-                        </thead>
-                        <tbody id="scorecardBody"></tbody>
-                    </table>
-                </div>
-            </section>
-
-            <!-- ============ Section 2: Causal separator ============ -->
-            <div class="causal-separator" role="separator" aria-label="Signals feed into the snapshot below">
-                <span class="separator-arrow" aria-hidden="true">&darr;</span>
-                <span class="separator-text">Based on the above signals:</span>
+            <!-- Top bar with menu toggle -->
+            <div class="top-bar">
+                <button id="menuToggleBtn" class="menu-toggle" type="button" aria-label="Open navigation menu">
+                    <span class="menu-hamburger"></span>
+                </button>
+                <span class="top-bar-ticker" id="topBarTicker"></span>
+                <button id="newSearchBtn" class="new-search" type="button">New search</button>
             </div>
 
-            <!-- ============ Section 3: One-sentence snapshot (full width) ============ -->
-            <section class="snapshot-sentence-box">
-                <p class="snapshot-sentence-text" id="snapshotSentence"></p>
+            <!-- Drawer overlay -->
+            <div class="drawer-overlay" id="drawerOverlay"></div>
+
+            <!-- Left drawer menu -->
+            <nav class="drawer" id="drawer">
+                <div class="drawer-header">
+                    <span class="drawer-brand">StockBrief</span>
+                    <button class="drawer-close" id="drawerCloseBtn" type="button" aria-label="Close menu">&times;</button>
+                </div>
+                <ul class="drawer-nav">
+                    <li><button class="drawer-item active" data-view="overview">Overview</button></li>
+                    <li><button class="drawer-item" data-view="scorecard">Scorecard</button></li>
+                    <li><button class="drawer-item" data-view="chart">Chart</button></li>
+                    <li><button class="drawer-item" data-view="news">News</button></li>
+                    <li><button class="drawer-item" data-view="chat">Ask AI</button></li>
+                    <li><button class="drawer-item" data-view="compare">Compare</button></li>
+                </ul>
+            </nav>
+
+            <!-- View: Overview -->
+            <section class="view view-overview active" id="view-overview">
+                <section class="hero card">
+                    <div class="hero-top">
+                        <div class="hero-id">
+                            <div class="logo-wrap" id="logoWrap">
+                                <img id="companyLogo" class="company-logo" alt="" />
+                                <span class="logo-fallback" id="logoFallback"></span>
+                            </div>
+                            <div class="hero-text">
+                                <h2 class="company-name" id="companyName"></h2>
+                                <span class="ticker-symbol" id="tickerSymbol"></span>
+                                <p class="snapshot-text" id="snapshotText"></p>
+                            </div>
+                        </div>
+                        <div class="price-block">
+                            <div class="current-price" id="currentPrice"></div>
+                            <div class="price-change" id="priceChange"></div>
+                        </div>
+                    </div>
+                </section>
+
+                <div class="causal-separator" role="separator" aria-label="Signals feed into the snapshot below">
+                    <span class="separator-arrow" aria-hidden="true">&darr;</span>
+                    <span class="separator-text">Based on the above signals:</span>
+                </div>
+
+                <section class="snapshot-sentence-box">
+                    <p class="snapshot-sentence-text" id="snapshotSentence"></p>
+                </section>
+
+                <section class="risk-flags card" id="riskSection">
+                    <h3 class="section-title">Risk Flags</h3>
+                    <ul class="risk-list" id="riskList"></ul>
+                </section>
             </section>
 
-            <!-- ============ Section 4: Risk flags (full width) ============ -->
-            <section class="risk-flags card" id="riskSection">
-                <h3 class="section-title">Risk Flags</h3>
-                <ul class="risk-list" id="riskList"></ul>
+            <!-- View: Scorecard -->
+            <section class="view view-scorecard" id="view-scorecard">
+                <section class="card scorecard-section">
+                    <h3 class="section-title">Five-Factor Scorecard</h3>
+                    <div class="scorecard-table-wrap">
+                        <table class="scorecard-table">
+                            <thead>
+                                <tr>
+                                    <th scope="col">Factor</th>
+                                    <th scope="col">Signal</th>
+                                </tr>
+                            </thead>
+                            <tbody id="scorecardBody"></tbody>
+                        </table>
+                    </div>
+                </section>
             </section>
 
-            <!-- ============ News + Chat (two columns) ============ -->
-            <section class="news-chat-section">
-                <div class="news-chat-left">
+            <!-- View: Chart -->
+            <section class="view view-chart" id="view-chart">
+                <section class="hero card">
+                    <div class="chart-block">
+                        <div class="chart-tabs" id="chartTabs" role="tablist" aria-label="Price chart period">
+                            <button class="chart-tab" data-period="1mo" type="button" role="tab">1M</button>
+                            <button class="chart-tab active" data-period="3mo" type="button" role="tab" aria-selected="true">3M</button>
+                            <button class="chart-tab" data-period="6mo" type="button" role="tab">6M</button>
+                            <button class="chart-tab" data-period="1y" type="button" role="tab">1Y</button>
+                            <button class="chart-tab" data-period="5y" type="button" role="tab">5Y</button>
+                            <button class="chart-tab" data-period="max" type="button" role="tab">Max</button>
+                        </div>
+                        <div class="chart-wrap">
+                            <canvas id="priceChart" aria-label="Historical price chart"></canvas>
+                        </div>
+                        <div class="chart-legend" id="chartLegend"></div>
+                        <p class="chart-note" id="chartNote"></p>
+                    </div>
+                </section>
+            </section>
+
+            <!-- View: News -->
+            <section class="view view-news" id="view-news">
+                <div class="news-chat-left news-full-width">
                     <h3 class="section-title">Recent News</h3>
                     <div class="news-scroll" id="newsList"></div>
+                    <div class="news-prompt" id="newsPrompt">
+                        <p>Prefer a summary? Ask AI to analyze these headlines for you.</p>
+                        <button type="button" class="news-prompt-btn" id="newsPromptBtn">Ask AI about this news</button>
+                    </div>
                 </div>
-                <div class="news-chat-right">
+            </section>
+
+            <!-- View: Ask AI -->
+            <section class="view view-chat" id="view-chat">
+                <div class="news-chat-right chat-full-width">
                     <h3 class="section-title" id="chatHeader">Ask about this stock</h3>
                     <div class="chat-messages" id="chatMessages">
                         <p class="chat-placeholder" id="chatPlaceholder"></p>
@@ -140,15 +180,17 @@
                 </div>
             </section>
 
-            <!-- ============ Compare two stocks ============ -->
-            <section class="compare-section" id="compareSection">
-                <h3 class="section-title">Compare with another stock</h3>
-                <form class="compare-form" id="compareForm">
-                    <input type="text" id="compareTickerInput" placeholder="Enter a second ticker (e.g. MSFT)" maxlength="10" autocomplete="off" aria-label="Second stock ticker">
-                    <button type="submit" id="compareBtn">Compare</button>
-                </form>
-                <p id="compareError" class="compare-error" role="alert"></p>
-                <div id="compareResults"></div>
+            <!-- View: Compare -->
+            <section class="view view-compare" id="view-compare">
+                <section class="compare-section" id="compareSection">
+                    <h3 class="section-title">Compare with another stock</h3>
+                    <form class="compare-form" id="compareForm">
+                        <input type="text" id="compareTickerInput" placeholder="Enter a second ticker (e.g. MSFT)" maxlength="10" autocomplete="off" aria-label="Second stock ticker">
+                        <button type="submit" id="compareBtn">Compare</button>
+                    </form>
+                    <p id="compareError" class="compare-error" role="alert"></p>
+                    <div id="compareResults"></div>
+                </section>
             </section>
         </main>
     </div>
