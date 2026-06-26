@@ -261,6 +261,32 @@ def _safe_num(value):
     return f
 
 
+def _fetch_watchlist_price(ticker):
+    """Fetch company name + today's price/change fields for a single ticker.
+
+    Any field that cannot be retrieved is returned as None rather than raising,
+    so the watchlist view degrades gracefully per stock.
+    """
+    try:
+        stock = yf.Ticker(ticker)
+        info = stock.info
+    except Exception:
+        info = None
+    if not info:
+        return {'ticker': ticker, 'name': None, 'price': None, 'change': None, 'change_pct': None}
+    name = info.get('longName') or info.get('shortName') or None
+    price = _safe_num(info.get('currentPrice') or info.get('regularMarketPrice'))
+    change = _safe_num(info.get('regularMarketChange'))
+    change_pct = _safe_num(info.get('regularMarketChangePercent'))
+    return {
+        'ticker': ticker,
+        'name': name,
+        'price': price,
+        'change': change,
+        'change_pct': change_pct
+    }
+
+
 def compute_historical_pe(stock, years=5):
     """Compute average trailing P/E over the last `years` years from financial statements."""
     try:
@@ -877,6 +903,26 @@ def check_watch(ticker):
     return jsonify({'watched': existing is not None})
 
 
+@app.route('/api/watchlist-prices', methods=['GET'])
+@login_required
+def watchlist_prices():
+    """Batch-fetch name + today's price fields for every stock in the user's watchlist."""
+    watches = Watch.query.filter_by(user_id=current_user.id).order_by(Watch.added_at.desc()).all()
+    tickers = [w.ticker for w in watches]
+    if not tickers:
+        return jsonify([])
+
+    def _safe_fetch(t):
+        try:
+            return _fetch_watchlist_price(t)
+        except Exception:
+            return {'ticker': t, 'name': None, 'price': None, 'change': None, 'change_pct': None}
+
+    with ThreadPoolExecutor(max_workers=min(8, len(tickers))) as ex:
+        results = list(ex.map(_safe_fetch, tickers))
+    return jsonify(results)
+
+
 # ============================================================================
 # Notes (Reminiscences) routes
 # ============================================================================
@@ -884,7 +930,11 @@ def check_watch(ticker):
 @app.route('/api/notes', methods=['GET'])
 @login_required
 def get_notes():
-    notes = Note.query.filter_by(user_id=current_user.id).order_by(Note.created_at.desc()).all()
+    ticker_filter = (request.args.get('ticker') or '').strip().upper()
+    query = Note.query.filter_by(user_id=current_user.id)
+    if ticker_filter:
+        query = query.filter_by(ticker=ticker_filter)
+    notes = query.order_by(Note.created_at.desc()).all()
     return jsonify({'notes': [{
         'id': n.id,
         'ticker': n.ticker or '',

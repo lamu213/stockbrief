@@ -2089,6 +2089,380 @@ body {
 }
 
 /* ============================================
+   Watchlist — redesigned card rows
+   ============================================ */
+.watchlist-summary {
+    font-size: 12px;
+    color: #4A4E6A;
+    margin-bottom: 12px;
+}
+
+.wl-card {
+    background: #1A1D27;
+    border: 1px solid #2A2D3A;
+    border-radius: 10px;
+    margin-bottom: 8px;
+    overflow: hidden;
+    transition: background 0.18s;
+}
+
+.wl-card:hover {
+    background: #20243A;
+}
+
+.wl-row {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 14px 16px;
+    cursor: pointer;
+}
+
+.wl-bar {
+    width: 2px;
+    align-self: stretch;
+    flex-shrink: 0;
+    border-radius: 1px;
+    background: #2A2D3A;
+}
+
+.wl-bar.up { background: #00C48C; }
+.wl-bar.down { background: #FF5B5B; }
+.wl-bar.flat { background: #2A2D3A; }
+
+.wl-info {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+    min-width: 0;
+    flex: 1;
+}
+
+.wl-ticker {
+    font-size: 16px;
+    font-weight: 600;
+    color: #00D4AA;
+    letter-spacing: 0.3px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.wl-name {
+    font-size: 13px;
+    color: #6B7090;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.wl-prices {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-end;
+    gap: 2px;
+    flex-shrink: 0;
+}
+
+.wl-price {
+    font-family: 'SF Mono', 'Consolas', 'Monaco', monospace;
+    font-size: 15px;
+    font-weight: 600;
+    color: #F0F0F0;
+    font-variant-numeric: tabular-nums;
+}
+
+.wl-change {
+    font-size: 13px;
+    font-weight: 600;
+    font-variant-numeric: tabular-nums;
+}
+
+.wl-change.up { color: #00C48C; }
+.wl-change.down { color: #FF5B5B; }
+.wl-change.flat { color: #6B7090; }
+
+.wl-actions {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    flex-shrink: 0;
+}
+
+.wl-notes-btn,
+.wl-remove-btn {
+    background: none;
+    border: none;
+    color: #6B7090;
+    font-size: 1rem;
+    cursor: pointer;
+    padding: 4px 6px;
+    line-height: 1;
+    border-radius: 6px;
+    transition: color 0.18s, background 0.18s;
+}
+
+.wl-notes-btn:hover {
+    color: #00D4AA;
+    background: rgba(0, 212, 170, 0.08);
+}
+
+.wl-remove-btn:hover {
+    color: #FF5B5B;
+    background: rgba(255, 91, 91, 0.08);
+}
+
+/* Notes accordion panel */
+.wl-notes-panel {
+    background: #141820;
+    border-top: 1px solid #2A2D3A;
+    padding: 12px 16px;
+    border-radius: 0 0 10px 10px;
+}
+
+.wl-notes-list {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+}
+
+.wl-note {
+    padding: 8px 0;
+    border-bottom: 1px solid #2A2D3A;
+}
+
+.wl-note:last-child {
+    border-bottom: none;
+}
+
+.wl-note-head {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin-bottom: 4px;
+}
+
+.wl-note-title {
+    font-size: 13px;
+    font-weight: 500;
+    color: #F0F0F0;
+    flex: 1;
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.wl-note-edit,
+.wl-note-del {
+    background: none;
+    border: none;
+    font-size: 0.95rem;
+    color: #6B7090;
+    cursor: pointer;
+    padding: 2px 5px;
+    line-height: 1;
+    transition: color 0.18s;
+}
+
+.wl-note-edit:hover { color: #00D4AA; }
+.wl-note-del:hover { color: #FF5B5B; }
+
+.wl-note-edit-title {
+    flex: 1;
+    border: 1px solid #2A2D3A;
+    outline: none;
+    font-size: 13px;
+    font-weight: 500;
+    color: #F0F0F0;
+    padding: 4px 8px;
+    border-radius: 6px;
+    background: #0F1117;
+}
+
+.wl-note-edit-title:focus { border-color: #00D4AA; }
+
+.wl-note-edit-body,
+.wl-note-input-content {
+    width: 100%;
+    border: 1px solid #2A2D3A;
+    outline: none;
+    font-size: 13px;
+    color: #8A8FA8;
+    padding: 8px 10px;
+    border-radius: 6px;
+    background: #0F1117;
+    line-height: 1.55;
+    resize: vertical;
+    min-height: 70px;
+    margin-bottom: 6px;
+    font-family: inherit;
+}
+
+.wl-note-edit-body:focus,
+.wl-note-input-content:focus { border-color: #00D4AA; }
+
+.wl-note-body {
+    font-size: 13px;
+    color: #8A8FA8;
+    line-height: 1.55;
+    margin-bottom: 4px;
+    word-wrap: break-word;
+}
+
+.wl-note-date {
+    font-size: 11px;
+    color: #4A4E6A;
+}
+
+.wl-notes-empty,
+.wl-notes-loading {
+    font-size: 13px;
+    color: #6B7090;
+    padding: 6px 0;
+}
+
+.wl-add-note-btn {
+    background: none;
+    border: 1px dashed #2A2D3A;
+    color: #6B7090;
+    padding: 8px 14px;
+    border-radius: 8px;
+    font-size: 13px;
+    font-weight: 500;
+    cursor: pointer;
+    margin-top: 10px;
+    width: 100%;
+    transition: border-color 0.18s, color 0.18s;
+}
+
+.wl-add-note-btn:hover {
+    border-color: #00D4AA;
+    color: #00D4AA;
+}
+
+.wl-note-form {
+    margin-top: 10px;
+    display: flex;
+    flex-direction: column;
+}
+
+.wl-note-input-title {
+    width: 100%;
+    border: 1px solid #2A2D3A;
+    outline: none;
+    font-size: 13px;
+    font-weight: 500;
+    color: #F0F0F0;
+    padding: 8px 10px;
+    border-radius: 6px;
+    background: #0F1117;
+    margin-bottom: 8px;
+}
+
+.wl-note-input-title:focus { border-color: #00D4AA; }
+
+.wl-note-form-actions {
+    display: flex;
+    gap: 8px;
+}
+
+.wl-note-save {
+    background: #00D4AA;
+    color: #0F1117;
+    border: none;
+    padding: 7px 16px;
+    border-radius: 6px;
+    font-size: 13px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: background 0.18s;
+}
+
+.wl-note-save:hover { background: #00B894; }
+
+.wl-note-cancel {
+    background: none;
+    border: 1px solid #2A2D3A;
+    color: #6B7090;
+    padding: 7px 16px;
+    border-radius: 6px;
+    font-size: 13px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: color 0.18s, border-color 0.18s;
+}
+
+.wl-note-cancel:hover {
+    color: #F0F0F0;
+    border-color: #6B7090;
+}
+
+/* Skeleton loading */
+.wl-skeleton {
+    pointer-events: none;
+}
+
+.wl-skeleton .wl-bar {
+    background: #2A2D3A;
+}
+
+.sk-line {
+    display: block;
+    height: 12px;
+    border-radius: 4px;
+    background: #2A2D3A;
+    animation: wlShimmer 1.4s ease-in-out infinite;
+}
+
+.sk-line.wl-ticker { width: 60px; height: 16px; }
+.sk-line.wl-name { width: 120px; height: 11px; }
+.sk-line.wl-price { width: 70px; height: 15px; }
+.sk-line.wl-change { width: 50px; height: 11px; }
+
+@keyframes wlShimmer {
+    0%, 100% { opacity: 0.5; }
+    50% { opacity: 0.85; }
+}
+
+/* ============================================
+   Reminiscences — grouped by ticker
+   ============================================ */
+.rem-group {
+    margin-bottom: 24px;
+}
+
+.rem-group:last-child {
+    margin-bottom: 0;
+}
+
+.rem-group-head {
+    display: flex;
+    align-items: baseline;
+    gap: 8px;
+    margin-bottom: 10px;
+    padding-bottom: 8px;
+    border-bottom: 1px solid #2A2D3A;
+}
+
+.rem-group-ticker {
+    font-size: 15px;
+    font-weight: 700;
+    color: #00D4AA;
+    letter-spacing: 0.3px;
+}
+
+.rem-group-name {
+    font-size: 13px;
+    color: #6B7090;
+}
+
+.rem-group-list {
+    display: flex;
+    flex-direction: column;
+}
+
+/* ============================================
    Responsive
    ============================================ */
 @media (min-width: 640px) {

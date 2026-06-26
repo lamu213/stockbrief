@@ -1182,36 +1182,325 @@ document.addEventListener('DOMContentLoaded', () => {
 
     /* ---------- Watchlist view ---------- */
 
+    const WL_EMPTY_MSG = 'Your watchlist is empty. Search a stock and click \u2605 to add it.';
+
+    function updateWatchlistSummary(container, count) {
+        const summary = document.getElementById('watchlistSummary');
+        if (count > 0) {
+            summary.textContent = `${count} stock${count === 1 ? '' : 's'} \u00b7 Updated just now`;
+        } else {
+            summary.textContent = '';
+        }
+    }
+
+    function renderWatchlistSkeleton() {
+        const card = document.createElement('div');
+        card.className = 'wl-card wl-skeleton';
+        card.innerHTML = `
+            <div class="wl-row">
+                <div class="wl-bar"></div>
+                <div class="wl-info">
+                    <span class="sk-line wl-ticker"></span>
+                    <span class="sk-line wl-name"></span>
+                </div>
+                <div class="wl-prices">
+                    <span class="sk-line wl-price"></span>
+                    <span class="sk-line wl-change"></span>
+                </div>
+                <div class="wl-actions">
+                    <span class="sk-line" style="width:18px;height:18px;border-radius:4px"></span>
+                    <span class="sk-line" style="width:18px;height:18px;border-radius:4px"></span>
+                </div>
+            </div>
+        `;
+        return card;
+    }
+
+    function formatWlPrice(v) {
+        const n = numOrNull(v);
+        if (n == null) return '\u2014';
+        return '$' + n.toFixed(2);
+    }
+
+    function formatWlChange(change, changePct) {
+        const pct = numOrNull(changePct);
+        const chg = numOrNull(change);
+        if (pct != null) {
+            const arrow = pct >= 0 ? '\u25B2' : '\u25BC';
+            return `${arrow} ${Math.abs(pct).toFixed(2)}%`;
+        }
+        if (chg != null) {
+            const arrow = chg >= 0 ? '\u25B2' : '\u25BC';
+            return `${arrow} ${Math.abs(chg).toFixed(2)}`;
+        }
+        return '\u2014';
+    }
+
+    function wlDirection(change, changePct) {
+        const pct = numOrNull(changePct);
+        const chg = numOrNull(change);
+        if (pct != null) return pct >= 0 ? 'up' : 'down';
+        if (chg != null) return chg >= 0 ? 'up' : 'down';
+        return 'flat';
+    }
+
+    function renderWatchlistCard(stock) {
+        const ticker = (stock.ticker || '').toUpperCase();
+        const name = stock.name || '';
+        const direction = wlDirection(stock.change, stock.change_pct);
+
+        const card = document.createElement('div');
+        card.className = 'wl-card';
+        card.dataset.ticker = ticker;
+        card.innerHTML = `
+            <div class="wl-row" role="button" tabindex="0">
+                <div class="wl-bar ${direction}"></div>
+                <div class="wl-info">
+                    <span class="wl-ticker">${escapeHtml(ticker)}</span>
+                    <span class="wl-name">${escapeHtml(name)}</span>
+                </div>
+                <div class="wl-prices">
+                    <span class="wl-price">${escapeHtml(formatWlPrice(stock.price))}</span>
+                    <span class="wl-change ${direction}">${escapeHtml(formatWlChange(stock.change, stock.change_pct))}</span>
+                </div>
+                <div class="wl-actions">
+                    <button class="wl-notes-btn" type="button" aria-label="Show notes">\uD83D\uDCDD</button>
+                    <button class="wl-remove-btn" type="button" aria-label="Remove from watchlist">&times;</button>
+                </div>
+            </div>
+            <div class="wl-notes-panel" hidden></div>
+        `;
+
+        const row = card.querySelector('.wl-row');
+        row.addEventListener('click', (e) => {
+            if (e.target.closest('.wl-actions')) return;
+            closeDrawer();
+            generateBrief(ticker);
+        });
+        row.addEventListener('keydown', (e) => {
+            if (e.target.closest('.wl-actions')) return;
+            if (e.key === 'Enter' || e.key === ' ') {
+                e.preventDefault();
+                closeDrawer();
+                generateBrief(ticker);
+            }
+        });
+
+        card.querySelector('.wl-notes-btn').addEventListener('click', (e) => {
+            e.stopPropagation();
+            toggleNotesPanel(card, ticker);
+        });
+
+        card.querySelector('.wl-remove-btn').addEventListener('click', async (e) => {
+            e.stopPropagation();
+            try {
+                await fetch(`/api/watch/${encodeURIComponent(ticker)}`, { method: 'DELETE' });
+                watchedTickers.delete(ticker);
+            } catch (err) {
+                // ignore
+            }
+            card.remove();
+            const container = document.getElementById('watchlistContent');
+            const remaining = container.querySelectorAll('.wl-card:not(.wl-skeleton)').length;
+            if (remaining === 0) {
+                container.innerHTML = `<p class="no-news">${WL_EMPTY_MSG}</p>`;
+            }
+            updateWatchlistSummary(container, remaining);
+            if (currentTicker && currentTicker.toUpperCase() === ticker) {
+                updateWatchBtn(false);
+            }
+        });
+
+        return card;
+    }
+
+    async function toggleNotesPanel(card, ticker) {
+        const panel = card.querySelector('.wl-notes-panel');
+        if (!panel) return;
+        const isOpen = !panel.hidden;
+        if (isOpen) {
+            panel.hidden = true;
+            card.classList.remove('notes-open');
+            return;
+        }
+        panel.hidden = false;
+        card.classList.add('notes-open');
+        panel.innerHTML = '<p class="wl-notes-loading">Loading\u2026</p>';
+        await loadTickerNotes(card, ticker);
+    }
+
+    async function loadTickerNotes(card, ticker) {
+        const panel = card.querySelector('.wl-notes-panel');
+        if (!panel) return;
+        try {
+            const resp = await fetch(`/api/notes?ticker=${encodeURIComponent(ticker)}`);
+            const data = await resp.json();
+            const notes = data.notes || [];
+            renderNotesPanel(panel, notes, ticker, card);
+        } catch (err) {
+            panel.innerHTML = '<p class="wl-notes-empty">Failed to load notes.</p>';
+        }
+    }
+
+    function renderNotesPanel(panel, notes, ticker, card) {
+        panel.innerHTML = '';
+        const list = document.createElement('div');
+        list.className = 'wl-notes-list';
+        if (notes.length === 0) {
+            list.innerHTML = '<p class="wl-notes-empty">No notes for this stock yet.</p>';
+        } else {
+            notes.forEach(n => list.appendChild(renderWatchlistNoteItem(n, ticker, card)));
+        }
+        panel.appendChild(list);
+
+        const addBtn = document.createElement('button');
+        addBtn.type = 'button';
+        addBtn.className = 'wl-add-note-btn';
+        addBtn.textContent = '+ Add note';
+        addBtn.addEventListener('click', () => {
+            addBtn.hidden = true;
+            const form = renderWatchlistNoteForm(ticker, card, () => {
+                addBtn.hidden = false;
+                form.remove();
+            });
+            panel.appendChild(form);
+        });
+        panel.appendChild(addBtn);
+    }
+
+    function renderWatchlistNoteItem(note, ticker, card) {
+        const item = document.createElement('div');
+        item.className = 'wl-note';
+        item.dataset.id = note.id;
+        item.innerHTML = `
+            <div class="wl-note-head">
+                <span class="wl-note-title">${escapeHtml(note.title)}</span>
+                <button class="wl-note-edit" type="button" aria-label="Edit note">\u270E</button>
+                <button class="wl-note-del" type="button" aria-label="Delete note">&times;</button>
+            </div>
+            <p class="wl-note-body">${escapeHtml(note.content)}</p>
+            <span class="wl-note-date">${escapeHtml(note.created_at)}</span>
+        `;
+
+        item.querySelector('.wl-note-del').addEventListener('click', async () => {
+            try {
+                await fetch(`/api/notes/${note.id}`, { method: 'DELETE' });
+            } catch (err) {
+                // ignore
+            }
+            await loadTickerNotes(card, ticker);
+        });
+
+        item.querySelector('.wl-note-edit').addEventListener('click', () => {
+            startWatchlistNoteEdit(item, note, ticker, card);
+        });
+
+        return item;
+    }
+
+    function renderWatchlistNoteForm(ticker, card, onCancel) {
+        const form = document.createElement('div');
+        form.className = 'wl-note-form';
+        form.innerHTML = `
+            <input class="wl-note-input-title" type="text" placeholder="Note title" maxlength="255">
+            <textarea class="wl-note-input-content" placeholder="Write your note..."></textarea>
+            <div class="wl-note-form-actions">
+                <button class="wl-note-save" type="button">Save</button>
+                <button class="wl-note-cancel" type="button">Cancel</button>
+            </div>
+        `;
+        const titleInput = form.querySelector('.wl-note-input-title');
+        const contentInput = form.querySelector('.wl-note-input-content');
+        titleInput.focus();
+
+        form.querySelector('.wl-note-cancel').addEventListener('click', onCancel);
+        form.querySelector('.wl-note-save').addEventListener('click', async () => {
+            const title = titleInput.value.trim();
+            const content = contentInput.value.trim();
+            if (!title || !content) return;
+            const saveBtn = form.querySelector('.wl-note-save');
+            saveBtn.disabled = true;
+            saveBtn.textContent = 'Saving\u2026';
+            try {
+                await fetch('/api/notes', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ ticker, title, content })
+                });
+            } catch (err) {
+                // ignore
+            }
+            await loadTickerNotes(card, ticker);
+        });
+
+        return form;
+    }
+
+    function startWatchlistNoteEdit(item, note, ticker, card) {
+        const titleEl = item.querySelector('.wl-note-title');
+        const bodyEl = item.querySelector('.wl-note-body');
+        const editBtn = item.querySelector('.wl-note-edit');
+        const delBtn = item.querySelector('.wl-note-del');
+        if (!titleEl || !bodyEl) return;
+
+        titleEl.outerHTML = `<input class="wl-note-edit-title" value="${escapeHtml(note.title)}">`;
+        bodyEl.outerHTML = `<textarea class="wl-note-edit-body">${escapeHtml(note.content)}</textarea>`;
+
+        editBtn.innerHTML = '\u2713';
+        editBtn.setAttribute('aria-label', 'Save note');
+        delBtn.innerHTML = '&times;';
+        delBtn.setAttribute('aria-label', 'Cancel edit');
+
+        const newTitle = item.querySelector('.wl-note-edit-title');
+        const newBody = item.querySelector('.wl-note-edit-body');
+        newBody.focus();
+
+        editBtn.onclick = async () => {
+            const t = newTitle.value.trim();
+            const c = newBody.value.trim();
+            if (!t || !c) return;
+            editBtn.disabled = true;
+            try {
+                await fetch(`/api/notes/${note.id}`, {
+                    method: 'PUT',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ title: t, content: c })
+                });
+            } catch (err) {
+                // ignore
+            }
+            await loadTickerNotes(card, ticker);
+        };
+
+        delBtn.onclick = async () => {
+            await loadTickerNotes(card, ticker);
+        };
+    }
+
     async function loadWatchlist() {
         const content = document.getElementById('watchlistContent');
+        const summary = document.getElementById('watchlistSummary');
         if (!currentUser) {
+            summary.textContent = '';
             content.innerHTML = '<p class="no-news">Please sign in to view your watchlist.</p>';
             return;
         }
-        content.innerHTML = '<p class="discover-loading">Loading…</p>';
+        summary.textContent = '';
+        content.innerHTML = '';
+        for (let i = 0; i < 3; i++) {
+            content.appendChild(renderWatchlistSkeleton());
+        }
         try {
-            const resp = await fetch('/api/watch');
+            const resp = await fetch('/api/watchlist-prices');
             const data = await resp.json();
-            const tickers = data.tickers || [];
-            if (tickers.length === 0) {
-                content.innerHTML = '<p class="no-news">Your watchlist is empty. Use the ★ button on any stock page to add it here.</p>';
+            const stocks = Array.isArray(data) ? data : [];
+            content.innerHTML = '';
+            if (stocks.length === 0) {
+                content.innerHTML = `<p class="no-news">${WL_EMPTY_MSG}</p>`;
                 return;
             }
-            content.innerHTML = '';
-            tickers.forEach(ticker => {
-                const card = document.createElement('button');
-                card.type = 'button';
-                card.className = 'discover-card';
-                card.innerHTML = `
-                    <span class="discover-ticker">${escapeHtml(ticker)}</span>
-                    <span class="discover-name">Click to view brief</span>
-                `;
-                card.addEventListener('click', () => {
-                    closeDrawer();
-                    generateBrief(ticker);
-                });
-                content.appendChild(card);
-            });
+            updateWatchlistSummary(content, stocks.length);
+            stocks.forEach(s => content.appendChild(renderWatchlistCard(s)));
         } catch (err) {
             content.innerHTML = '<p class="no-news">Failed to load watchlist.</p>';
         }
@@ -1219,52 +1508,99 @@ document.addEventListener('DOMContentLoaded', () => {
 
     /* ---------- Reminiscences view ---------- */
 
+    function renderRemNoteCard(n) {
+        const card = document.createElement('div');
+        card.className = 'note-card';
+        card.dataset.id = n.id;
+        const tickerHtml = n.ticker ? `<span class="note-ticker">${escapeHtml(n.ticker)}</span>` : '';
+        card.innerHTML = `
+            <div class="note-header">
+                ${tickerHtml}
+                <span class="note-title">${escapeHtml(n.title)}</span>
+                <button class="note-edit" type="button" aria-label="Edit note">\u270E</button>
+                <button class="note-delete" type="button" aria-label="Delete note">&times;</button>
+            </div>
+            <p class="note-content">${escapeHtml(n.content)}</p>
+            <span class="note-date">${escapeHtml(n.created_at)}</span>
+        `;
+        card.querySelector('.note-edit').addEventListener('click', () => startEditNote(card, n));
+        card.querySelector('.note-delete').addEventListener('click', async () => {
+            try {
+                await fetch(`/api/notes/${n.id}`, { method: 'DELETE' });
+            } catch (err) {
+                // ignore
+            }
+            loadReminiscences();
+        });
+        return card;
+    }
+
     async function loadReminiscences() {
         const content = document.getElementById('reminiscencesContent');
         if (!currentUser) {
             content.innerHTML = '<p class="no-news">Please sign in to start your notebook.</p>';
             return;
         }
-        content.innerHTML = '<p class="discover-loading">Loading…</p>';
+        content.innerHTML = '<p class="discover-loading">Loading\u2026</p>';
         try {
-            const resp = await fetch('/api/notes');
-            const data = await resp.json();
-            const notes = data.notes || [];
+            const [notesResp, pricesResp] = await Promise.all([
+                fetch('/api/notes'),
+                fetch('/api/watchlist-prices')
+            ]);
+            const notesData = await notesResp.json();
+            const notes = notesData.notes || [];
             if (notes.length === 0) {
-                content.innerHTML = '<p class="no-news">No notes yet. Save AI insights from the Ask AI panel to build your notebook.</p>';
+                content.innerHTML = '<p class="no-news">No notes yet. Save AI insights or add notes from your watchlist to build your notebook.</p>';
                 return;
             }
-            content.innerHTML = '';
+
+            let nameMap = {};
+            try {
+                const prices = await pricesResp.json();
+                if (Array.isArray(prices)) {
+                    prices.forEach(p => {
+                        if (p.ticker && p.name) nameMap[p.ticker.toUpperCase()] = p.name;
+                    });
+                }
+            } catch (err) {
+                // company names are optional
+            }
+
+            const groups = {};
+            const general = [];
             notes.forEach(n => {
-                const card = document.createElement('div');
-                card.className = 'note-card';
-                card.dataset.id = n.id;
-                const tickerHtml = n.ticker ? `<span class="note-ticker">${escapeHtml(n.ticker)}</span>` : '';
-                card.innerHTML = `
-                    <div class="note-header">
-                        ${tickerHtml}
-                        <span class="note-title">${escapeHtml(n.title)}</span>
-                        <button class="note-edit" data-id="${n.id}" type="button" aria-label="Edit note">&#9998;</button>
-                        <button class="note-delete" data-id="${n.id}" type="button" aria-label="Delete note">&times;</button>
-                    </div>
-                    <p class="note-content">${escapeHtml(n.content)}</p>
-                    <span class="note-date">${escapeHtml(n.created_at)}</span>
-                `;
-                card.querySelector('.note-edit').addEventListener('click', () => startEditNote(card, n));
-                card.querySelector('.note-delete').addEventListener('click', async (e) => {
-                    const id = e.target.dataset.id;
-                    try {
-                        await fetch(`/api/notes/${id}`, { method: 'DELETE' });
-                        card.remove();
-                        if (content.querySelectorAll('.note-card').length === 0) {
-                            content.innerHTML = '<p class="no-news">No notes yet. Save AI insights from the Ask AI panel to build your notebook.</p>';
-                        }
-                    } catch (err) {
-                        // ignore
-                    }
-                });
-                content.appendChild(card);
+                const t = (n.ticker || '').toUpperCase();
+                if (t) {
+                    if (!groups[t]) groups[t] = [];
+                    groups[t].push(n);
+                } else {
+                    general.push(n);
+                }
             });
+
+            content.innerHTML = '';
+            const tickers = Object.keys(groups).sort();
+            tickers.forEach(t => {
+                const group = document.createElement('div');
+                group.className = 'rem-group';
+                const name = nameMap[t] || '';
+                group.innerHTML = `<div class="rem-group-head"><span class="rem-group-ticker">${escapeHtml(t)}</span>${name ? `<span class="rem-group-name">${escapeHtml(name)}</span>` : ''}</div>`;
+                const list = document.createElement('div');
+                list.className = 'rem-group-list';
+                groups[t].forEach(n => list.appendChild(renderRemNoteCard(n)));
+                group.appendChild(list);
+                content.appendChild(group);
+            });
+            if (general.length) {
+                const group = document.createElement('div');
+                group.className = 'rem-group';
+                group.innerHTML = '<div class="rem-group-head"><span class="rem-group-ticker">General</span></div>';
+                const list = document.createElement('div');
+                list.className = 'rem-group-list';
+                general.forEach(n => list.appendChild(renderRemNoteCard(n)));
+                group.appendChild(list);
+                content.appendChild(group);
+            }
         } catch (err) {
             content.innerHTML = '<p class="no-news">Failed to load notes.</p>';
         }
