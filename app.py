@@ -22,7 +22,7 @@ AIAND_MODEL = 'zai-org/glm-5.2'
 # ai& internal AI helper
 # ============================================================================
 
-def aiand_chat(system_prompt, user_prompt, max_tokens=500):
+def aiand_chat(system_prompt, user_prompt, max_tokens=2000):
     """Call ai&'s internal chat API and return the response text, or None on failure."""
     if not AIAND_API_KEY:
         return None
@@ -40,16 +40,26 @@ def aiand_chat(system_prompt, user_prompt, max_tokens=500):
                     {'role': 'system', 'content': system_prompt},
                     {'role': 'user', 'content': user_prompt}
                 ],
-                'max_tokens': max(max_tokens, 500)
+                'max_tokens': max(max_tokens, 2000)
             },
-            timeout=30
+            timeout=60
         )
         print(f'AIAND status: {resp.status_code}')
         if resp.status_code != 200:
             print(resp.text[:200])
             return None
         data = resp.json()
-        return data['choices'][0]['message']['content'].strip()
+        choice = data['choices'][0]
+        content = choice['message'].get('content')
+        finish_reason = choice.get('finish_reason')
+        print(f'AIAND finish_reason: {finish_reason}, content is None: {content is None}')
+        if content is None:
+            print(f'AIAND raw response keys: {list(choice["message"].keys())}')
+            reasoning = choice['message'].get('reasoning')
+            if reasoning:
+                print(f'AIAND reasoning (first 200 chars): {reasoning[:200]}')
+            return None
+        return content.strip()
     except Exception as e:
         print(f"AIAND exception: {type(e).__name__}: {e}")
         return None
@@ -487,20 +497,27 @@ def generate_valuation_snapshot(company_name, factors, next_earnings_days):
 
     connector = "but" if earnings_badge in ('red', 'yellow') else "and"
 
+    pe_raw = next((f.get('raw') for f in factors if f['name'] == 'P/E Ratio'), None)
+    peg_raw = next((f.get('raw') for f in factors if f['name'] == 'PEG Ratio'), None)
+
     system_prompt = (
-        "You are a concise equity research analyst. In exactly one sentence, "
-        "summarize a stock's valuation, technical momentum, and near-term earnings risk. "
-        "Plain English, no jargon, no disclaimers."
+        "You are a concise stock analyst writing for an everyday investor. "
+        "Write exactly one sentence summarizing the stock. Cover three things: "
+        "(1) how the valuation looks based on P/E and PEG signals, "
+        "(2) what momentum is doing based on RSI, and "
+        "(3) whether earnings are a near-term risk based on the earnings date. "
+        "Use the specific numbers and signal colors to inform the sentence — don't be vague. "
+        "No disclaimers, no markdown."
     )
     user_prompt = (
         f"Company: {company_name}\n"
-        f"Valuation: {valuation}\n"
-        f"Technical: {technical}\n"
-        f"Earnings risk: {risk}\n"
-        f"Connector word: {connector}\n"
+        f"P/E Ratio: {pe_raw} (signal: {pe_badge})\n"
+        f"PEG Ratio: {peg_raw} (signal: {peg_badge})\n"
+        f"RSI (14-day): {rsi_raw} (signal: {rsi_badge})\n"
+        f"Earnings: {next_earnings_days} days away (signal: {earnings_badge})\n"
         f"Write one sentence."
     )
-    ai = aiand_chat(system_prompt, user_prompt)
+    ai = aiand_chat(system_prompt, user_prompt, max_tokens=2000)
     if ai:
         return ai
 
