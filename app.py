@@ -12,45 +12,45 @@ import pandas as pd
 app = Flask(__name__)
 
 FINNHUB_API_KEY = os.environ.get('FINNHUB_API_KEY', '')
-GROQ_API_KEY = os.environ.get('GROQ_API_KEY', '')
-GROQ_API_URL = 'https://api.groq.com/openai/v1/chat/completions'
-GROQ_MODEL = 'llama3-8b-8192'
+AIAND_API_KEY = os.environ.get('OPENCODE_CONSOLE_TOKEN', '')
+AIAND_API_URL = 'https://api.aiand.com/v1/chat/completions'
+AIAND_MODEL = 'zai-org/glm-5.2'
 
 
 # ============================================================================
-# Groq AI helper
+# ai& internal AI helper
 # ============================================================================
 
-def groq_chat(system_prompt, user_prompt, max_tokens=200):
-    """Call the Groq chat API and return the response text, or None on failure."""
-    if not GROQ_API_KEY:
+def aiand_chat(system_prompt, user_prompt, max_tokens=500):
+    """Call ai&'s internal chat API and return the response text, or None on failure."""
+    if not AIAND_API_KEY:
         return None
     try:
-        print(f"GROQ attempting call, key length: {len(GROQ_API_KEY)}")
+        print(f"AIAND attempting call, key length: {len(AIAND_API_KEY)}")
         resp = requests.post(
-            GROQ_API_URL,
+            AIAND_API_URL,
             headers={
-                'Authorization': f'Bearer {GROQ_API_KEY}',
+                'Authorization': f'Bearer {AIAND_API_KEY}',
                 'Content-Type': 'application/json'
             },
             json={
-                'model': GROQ_MODEL,
+                'model': AIAND_MODEL,
                 'messages': [
                     {'role': 'system', 'content': system_prompt},
                     {'role': 'user', 'content': user_prompt}
                 ],
-                'max_tokens': max_tokens
+                'max_tokens': max(max_tokens, 500)
             },
-            timeout=15
+            timeout=30
         )
-        print(f'GROQ status: {resp.status_code}')
+        print(f'AIAND status: {resp.status_code}')
         if resp.status_code != 200:
             print(resp.text[:200])
             return None
         data = resp.json()
         return data['choices'][0]['message']['content'].strip()
     except Exception as e:
-        print(f"GROQ exception: {type(e).__name__}: {e}")
+        print(f"AIAND exception: {type(e).__name__}: {e}")
         return None
 
 
@@ -499,7 +499,7 @@ def generate_valuation_snapshot(company_name, factors, next_earnings_days):
         f"Connector word: {connector}\n"
         f"Write one sentence."
     )
-    ai = groq_chat(system_prompt, user_prompt)
+    ai = aiand_chat(system_prompt, user_prompt)
     if ai:
         return ai
 
@@ -519,7 +519,7 @@ def get_risk_explanations(factors):
         )
         raw = f.get('raw')
         user_prompt = f"Factor: {name}\nBadge: red\nRaw value: {raw}\nWrite one sentence."
-        ai = groq_chat(system_prompt, user_prompt)
+        ai = aiand_chat(system_prompt, user_prompt)
         if ai:
             explanations.append({'name': name, 'explanation': ai})
             continue
@@ -638,7 +638,7 @@ def _rule_based_news_analysis(headline, summary):
 def generate_news_analysis(headline, summary=''):
     """Generate a two-sentence AI analysis for a news item.
 
-    Tries Groq first with the headline and summary as input. If Groq is
+    Tries the ai& internal API first with the headline and summary as input. If it is
     unavailable or returns None, falls back to a deterministic, rule-based
     keyword approach so the feature always works.
     """
@@ -652,7 +652,7 @@ def generate_news_analysis(headline, summary=''):
         "neutral) and why. No disclaimers."
     )
     user_prompt = f"Headline: {headline}\nSummary: {summary}"
-    ai = groq_chat(system_prompt, user_prompt, max_tokens=200)
+    ai = aiand_chat(system_prompt, user_prompt, max_tokens=200)
     if ai:
         return ai
 
@@ -991,7 +991,7 @@ def suggest_stocks_api():
     )
     user_prompt = f'Topic: {query}'
 
-    raw = groq_chat(system_prompt, user_prompt, max_tokens=400)
+    raw = aiand_chat(system_prompt, user_prompt, max_tokens=2000)
     suggestions = []
     if raw:
         try:
