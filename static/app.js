@@ -753,8 +753,44 @@ document.addEventListener('DOMContentLoaded', () => {
         const msg = document.createElement('div');
         msg.className = `chat-msg chat-msg-${role}`;
         msg.innerHTML = `<span class="chat-bubble">${escapeHtml(text)}</span>`;
+        if (role === 'assistant') {
+            const saveBtn = document.createElement('button');
+            saveBtn.type = 'button';
+            saveBtn.className = 'chat-save-btn';
+            saveBtn.innerHTML = '<span class="save-icon">&#128190;</span> Save to <em>Reminiscences</em>';
+            saveBtn.addEventListener('click', () => saveToReminiscences(text, saveBtn));
+            msg.appendChild(saveBtn);
+        }
         chatMessages.appendChild(msg);
         chatMessages.scrollTop = chatMessages.scrollHeight;
+    }
+
+    async function saveToReminiscences(content, btn) {
+        if (!currentUser) {
+            openAuthModal('signin');
+            return;
+        }
+        const title = currentTicker ? `${currentTicker} — AI Insight` : 'AI Insight';
+        btn.disabled = true;
+        btn.innerHTML = 'Saving…';
+        try {
+            const resp = await fetch('/api/notes', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ ticker: currentTicker, title, content })
+            });
+            const data = await resp.json();
+            if (resp.ok) {
+                btn.innerHTML = '<span class="save-icon">&#10003;</span> Saved to <em>Reminiscences</em>';
+                btn.classList.add('saved');
+            } else {
+                btn.innerHTML = '<span class="save-icon">&#128190;</span> Save to <em>Reminiscences</em>';
+                btn.disabled = false;
+            }
+        } catch (err) {
+            btn.innerHTML = '<span class="save-icon">&#128190;</span> Save to <em>Reminiscences</em>';
+            btn.disabled = false;
+        }
     }
 
     async function sendChat(event) {
@@ -816,6 +852,7 @@ document.addEventListener('DOMContentLoaded', () => {
             item.classList.toggle('active', item.dataset.view === viewName);
         });
         if (viewName === 'watchlist') loadWatchlist();
+        if (viewName === 'reminiscences') loadReminiscences();
         window.scrollTo({ top: 0, behavior: 'smooth' });
     }
 
@@ -853,6 +890,56 @@ document.addEventListener('DOMContentLoaded', () => {
             });
         } catch (err) {
             content.innerHTML = '<p class="no-news">Failed to load watchlist.</p>';
+        }
+    }
+
+    /* ---------- Reminiscences view ---------- */
+
+    async function loadReminiscences() {
+        const content = document.getElementById('reminiscencesContent');
+        if (!currentUser) {
+            content.innerHTML = '<p class="no-news">Please sign in to start your notebook.</p>';
+            return;
+        }
+        content.innerHTML = '<p class="discover-loading">Loading…</p>';
+        try {
+            const resp = await fetch('/api/notes');
+            const data = await resp.json();
+            const notes = data.notes || [];
+            if (notes.length === 0) {
+                content.innerHTML = '<p class="no-news">No notes yet. Save AI insights from the Ask AI panel to build your notebook.</p>';
+                return;
+            }
+            content.innerHTML = '';
+            notes.forEach(n => {
+                const card = document.createElement('div');
+                card.className = 'note-card';
+                const tickerHtml = n.ticker ? `<span class="note-ticker">${escapeHtml(n.ticker)}</span>` : '';
+                card.innerHTML = `
+                    <div class="note-header">
+                        ${tickerHtml}
+                        <span class="note-title">${escapeHtml(n.title)}</span>
+                        <button class="note-delete" data-id="${n.id}" type="button" aria-label="Delete note">&times;</button>
+                    </div>
+                    <p class="note-content">${escapeHtml(n.content)}</p>
+                    <span class="note-date">${escapeHtml(n.created_at)}</span>
+                `;
+                card.querySelector('.note-delete').addEventListener('click', async (e) => {
+                    const id = e.target.dataset.id;
+                    try {
+                        await fetch(`/api/notes/${id}`, { method: 'DELETE' });
+                        card.remove();
+                        if (content.querySelectorAll('.note-card').length === 0) {
+                            content.innerHTML = '<p class="no-news">No notes yet. Save AI insights from the Ask AI panel to build your notebook.</p>';
+                        }
+                    } catch (err) {
+                        // ignore
+                    }
+                });
+                content.appendChild(card);
+            });
+        } catch (err) {
+            content.innerHTML = '<p class="no-news">Failed to load notes.</p>';
         }
     }
 

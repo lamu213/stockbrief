@@ -860,6 +860,48 @@ def check_watch(ticker):
     return jsonify({'watched': existing is not None})
 
 
+# ============================================================================
+# Notes (Reminiscences) routes
+# ============================================================================
+
+@app.route('/api/notes', methods=['GET'])
+@login_required
+def get_notes():
+    notes = Note.query.filter_by(user_id=current_user.id).order_by(Note.created_at.desc()).all()
+    return jsonify({'notes': [{
+        'id': n.id,
+        'ticker': n.ticker or '',
+        'title': n.title,
+        'content': n.content,
+        'created_at': n.created_at.strftime('%Y-%m-%d %H:%M')
+    } for n in notes]})
+
+
+@app.route('/api/notes', methods=['POST'])
+@login_required
+def add_note():
+    body = request.get_json(silent=True) or {}
+    ticker = (body.get('ticker') or '').strip().upper() or None
+    title = (body.get('title') or '').strip()
+    content = (body.get('content') or '').strip()
+    if not title or not content:
+        return jsonify({'error': 'Title and content are required.'}), 400
+    note = Note(user_id=current_user.id, ticker=ticker, title=title[:255], content=content)
+    db.session.add(note)
+    db.session.commit()
+    return jsonify({'ok': True, 'id': note.id})
+
+
+@app.route('/api/notes/<int:note_id>', methods=['DELETE'])
+@login_required
+def delete_note(note_id):
+    note = Note.query.filter_by(id=note_id, user_id=current_user.id).first()
+    if note:
+        db.session.delete(note)
+        db.session.commit()
+    return jsonify({'ok': True})
+
+
 @app.route('/api/history')
 def history_api():
     ticker = request.args.get('ticker', '').strip().upper()

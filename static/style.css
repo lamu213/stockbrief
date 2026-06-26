@@ -704,6 +704,16 @@ body {
     margin: 8px 20px;
 }
 
+.drawer-item-italic {
+    font-style: italic;
+    font-size: 0.85rem;
+}
+
+.reminiscences-title em {
+    font-style: italic;
+    font-size: 1rem;
+}
+
 /* View switching */
 .view {
     display: none;
@@ -754,6 +764,67 @@ body {
 .news-full-width {
     flex: 1 1 auto;
     max-width: none;
+}
+
+/* Note cards (Reminiscences) */
+.note-card {
+    padding: 16px 0;
+    border-bottom: 1px solid #EFEBE3;
+}
+
+.note-card:last-child {
+    border-bottom: none;
+}
+
+.note-header {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin-bottom: 6px;
+}
+
+.note-ticker {
+    background: var(--cream);
+    color: var(--terracotta);
+    font-size: 0.72rem;
+    font-weight: 700;
+    padding: 2px 8px;
+    border-radius: 999px;
+    letter-spacing: 0.4px;
+}
+
+.note-title {
+    font-size: 0.88rem;
+    font-weight: 600;
+    color: var(--charcoal);
+    flex: 1;
+}
+
+.note-delete {
+    background: none;
+    border: none;
+    font-size: 1.2rem;
+    color: var(--grey-soft);
+    cursor: pointer;
+    line-height: 1;
+    padding: 2px 6px;
+    transition: color 0.2s;
+}
+
+.note-delete:hover {
+    color: var(--badge-red);
+}
+
+.note-content {
+    font-size: 0.84rem;
+    color: var(--grey-text);
+    line-height: 1.55;
+    margin-bottom: 6px;
+}
+
+.note-date {
+    font-size: 11px;
+    color: var(--source-grey);
 }
 
 .chat-full-width {
@@ -1366,6 +1437,44 @@ body {
     font-size: 0.85rem;
     max-width: 85%;
     word-wrap: break-word;
+}
+
+.chat-save-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    background: none;
+    border: 1px solid #E0DCD4;
+    color: var(--grey-soft);
+    padding: 4px 10px;
+    border-radius: 999px;
+    font-size: 0.7rem;
+    font-weight: 600;
+    cursor: pointer;
+    margin-top: 6px;
+    transition: border-color 0.2s, color 0.2s;
+}
+
+.chat-save-btn:hover {
+    border-color: var(--terracotta);
+    color: var(--terracotta);
+}
+
+.chat-save-btn.saved {
+    border-color: var(--badge-green);
+    color: var(--badge-green);
+}
+
+.chat-save-btn:disabled {
+    cursor: default;
+}
+
+.chat-save-btn em {
+    font-style: italic;
+}
+
+.save-icon {
+    font-size: 0.8rem;
 }
 
 .chat-quick-actions {
