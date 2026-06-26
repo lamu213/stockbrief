@@ -1015,6 +1015,33 @@ document.addEventListener('DOMContentLoaded', () => {
 
     chatForm.addEventListener('submit', sendChat);
 
+    document.querySelectorAll('.chat-quick-btn').forEach(btn => {
+        btn.addEventListener('click', () => {
+            const promptType = btn.dataset.prompt;
+            const prompts = {
+                summarize: `Summarize the recent news for ${currentTicker}`,
+                risks: `What are the key risks for ${currentTicker} right now?`,
+                valuation: `How does ${currentTicker}'s valuation look based on its P/E and PEG ratios?`,
+                watchlist: `Compare my watchlist stocks and give me a cross-stock insight`
+            };
+            const message = prompts[promptType];
+            if (!message) return;
+
+            if (promptType === 'watchlist' && (!currentUser || watchedTickers.size === 0)) {
+                chatInput.value = message;
+                appendChatMsg('user', message);
+                appendChatMsg('assistant', currentUser
+                    ? 'You have no stocks in your watchlist yet. Use the star button on any stock page to add it to your watchlist, then try again.'
+                    : 'Please sign in and add some stocks to your watchlist first, then I can compare them for you.');
+                chatInput.value = '';
+                return;
+            }
+
+            chatInput.value = message;
+            chatForm.requestSubmit();
+        });
+    });
+
     /* Auth event listeners */
     document.getElementById('signinBtn').addEventListener('click', () => openAuthModal('signin'));
     authModalClose.addEventListener('click', closeAuthModal);

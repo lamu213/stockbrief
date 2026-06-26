@@ -1150,9 +1150,19 @@ def chat_api():
     news = fetch_news(ticker, company_name)
     headlines = '; '.join(n.get('title', '') for n in news[:5]) if news else 'No recent news available.'
 
+    # If user mentions watchlist/portfolio, pull their saved stocks as extra context
+    watchlist_context = ''
+    msg_lower = message.lower()
+    if current_user.is_authenticated and any(kw in msg_lower for kw in ['watchlist', 'portfolio', 'compare my', 'my stocks', 'my watch']):
+        watches = Watch.query.filter_by(user_id=current_user.id).order_by(Watch.added_at.desc()).all()
+        if watches:
+            watch_tickers = [w.ticker for w in watches]
+            watchlist_context = f"\nThe user's watchlist contains: {', '.join(watch_tickers)}. Provide a cross-stock analysis or comparison if relevant."
+
     system_prompt = (
         f"You are a helpful stock analyst assistant. The user is asking about {company_name} (ticker: {ticker}). "
-        f"Recent news headlines: {headlines}. "
+        f"Recent news headlines: {headlines}."
+        f"{watchlist_context} "
         "Answer concisely in plain English. If you don't know something, say so. No disclaimers, no markdown."
     )
 
