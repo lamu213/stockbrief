@@ -6,16 +6,71 @@ from datetime import datetime, timedelta
 from urllib.parse import urlparse
 from concurrent.futures import ThreadPoolExecutor
 from flask import Flask, render_template, jsonify, request
+from flask_sqlalchemy import SQLAlchemy
+from flask_login import LoginManager, UserMixin, login_user, logout_user, login_required, current_user
+from werkzeug.security import generate_password_hash, check_password_hash
 import yfinance as yf
 import requests
 import pandas as pd
 
 app = Flask(__name__)
+app.config['SECRET_KEY'] = os.environ.get('SECRET_KEY', 'dev-secret-key-change-in-prod')
+app.config['SQLALCHEMY_DATABASE_URI'] = os.environ.get('DATABASE_URL', 'sqlite:///stockbrief.db')
+app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
+
+db = SQLAlchemy(app)
+login_manager = LoginManager(app)
+login_manager.login_view = None
 
 FINNHUB_API_KEY = os.environ.get('FINNHUB_API_KEY', '')
 AIAND_API_KEY = os.environ.get('OPENCODE_CONSOLE_TOKEN', '')
 AIAND_API_URL = 'https://api.aiand.com/v1/chat/completions'
 AIAND_MODEL = 'zai-org/glm-5.2'
+
+
+# ============================================================================
+# Database models
+# ============================================================================
+
+class User(UserMixin, db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+    email = db.Column(db.String(255), unique=True, nullable=False)
+    password_hash = db.Column(db.String(255), nullable=False)
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+    watches = db.relationship('Watch', backref='user', lazy=True, cascade='all, delete-orphan')
+    notes = db.relationship('Note', backref='user', lazy=True, cascade='all, delete-orphan')
+
+    def set_password(self, password):
+        self.password_hash = generate_password_hash(password)
+
+    def check_password(self, password):
+        return check_password_hash(self.password_hash, password)
+
+
+class Watch(db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+    user_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False)
+    ticker = db.Column(db.String(20), nullable=False)
+    added_at = db.Column(db.DateTime, default=datetime.utcnow)
+    __table_args__ = (db.UniqueConstraint('user_id', 'ticker', name='uq_user_ticker'),)
+
+
+class Note(db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+    user_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False)
+    ticker = db.Column(db.String(20))
+    title = db.Column(db.String(255), nullable=False)
+    content = db.Column(db.Text, nullable=False)
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+
+
+@login_manager.user_loader
+def load_user(user_id):
+    return User.query.get(int(user_id))
+
+
+with app.app_context():
+    db.create_all()
 
 
 # ============================================================================
@@ -706,6 +761,57 @@ def fetch_news(ticker, company_name=''):
 @app.route('/')
 def index():
     return render_template('index.html')
+
+
+# ============================================================================
+# Auth routes
+# ============================================================================
+
+@app.route('/api/register', methods=['POST'])
+def register_api():
+    body = request.get_json(silent=True) or {}
+    email = (body.get('email') or '').strip().lower()
+    password = body.get('password') or ''
+    if not email or not password:
+        return jsonify({'error': 'Email and password are required.'}), 400
+    if len(password) < 6:
+        return jsonify({'error': 'Password must be at least 6 characters.'}), 400
+    if User.query.filter_by(email=email).first():
+        return jsonify({'error': 'An account with this email already exists.'}), 409
+    user = User(email=email)
+    user.set_password(password)
+    db.session.add(user)
+    db.session.commit()
+    login_user(user)
+    return jsonify({'email': user.email})
+
+
+@app.route('/api/login', methods=['POST'])
+def login_api():
+    body = request.get_json(silent=True) or {}
+    email = (body.get('email') or '').strip().lower()
+    password = body.get('password') or ''
+    if not email or not password:
+        return jsonify({'error': 'Email and password are required.'}), 400
+    user = User.query.filter_by(email=email).first()
+    if not user or not user.check_password(password):
+        return jsonify({'error': 'Invalid email or password.'}), 401
+    login_user(user)
+    return jsonify({'email': user.email})
+
+
+@app.route('/api/logout', methods=['POST'])
+@login_required
+def logout_api():
+    logout_user()
+    return jsonify({'ok': True})
+
+
+@app.route('/api/me')
+def me_api():
+    if current_user.is_authenticated:
+        return jsonify({'email': current_user.email})
+    return jsonify({'email': None})
 
 
 @app.route('/api/history')

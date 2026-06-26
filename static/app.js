@@ -7,6 +7,21 @@ document.addEventListener('DOMContentLoaded', () => {
     const inputView = document.getElementById('inputView');
     const newSearchBtn = document.getElementById('newSearchBtn');
 
+    /* Auth elements */
+    const authArea = document.getElementById('authArea');
+    const signinBtn = document.getElementById('signinBtn');
+    const authModal = document.getElementById('authModal');
+    const authModalClose = document.getElementById('authModalClose');
+    const tabSignin = document.getElementById('tabSignin');
+    const tabRegister = document.getElementById('tabRegister');
+    const authForm = document.getElementById('authForm');
+    const authEmail = document.getElementById('authEmail');
+    const authPassword = document.getElementById('authPassword');
+    const authSubmit = document.getElementById('authSubmit');
+    const authError = document.getElementById('authError');
+    let authMode = 'signin';
+    let currentUser = null;
+
     const logoWrap = document.getElementById('logoWrap');
     const companyLogo = document.getElementById('companyLogo');
     const logoFallback = document.getElementById('logoFallback');
@@ -799,6 +814,87 @@ document.addEventListener('DOMContentLoaded', () => {
         window.scrollTo({ top: 0, behavior: 'smooth' });
     }
 
+    /* ---------- Auth ---------- */
+
+    async function checkAuth() {
+        try {
+            const resp = await fetch('/api/me');
+            const data = await resp.json();
+            currentUser = data.email;
+            updateAuthUI();
+        } catch (err) {
+            currentUser = null;
+        }
+    }
+
+    function updateAuthUI() {
+        if (currentUser) {
+            authArea.innerHTML = `<span class="auth-user">${escapeHtml(currentUser)}</span> <button class="auth-btn" id="signoutBtn" type="button">Sign out</button>`;
+            document.getElementById('signoutBtn').addEventListener('click', signout);
+        } else {
+            authArea.innerHTML = `<button class="auth-btn" id="signinBtn" type="button">Sign in</button>`;
+            document.getElementById('signinBtn').addEventListener('click', () => openAuthModal('signin'));
+        }
+    }
+
+    function openAuthModal(mode) {
+        authMode = mode;
+        authError.textContent = '';
+        authEmail.value = '';
+        authPassword.value = '';
+        tabSignin.classList.toggle('active', mode === 'signin');
+        tabRegister.classList.toggle('active', mode === 'register');
+        authSubmit.textContent = mode === 'signin' ? 'Sign in' : 'Register';
+        authModal.classList.add('open');
+        authEmail.focus();
+    }
+
+    function closeAuthModal() {
+        authModal.classList.remove('open');
+    }
+
+    async function handleAuthSubmit(event) {
+        if (event) event.preventDefault();
+        const email = authEmail.value.trim();
+        const password = authPassword.value;
+        if (!email || !password) {
+            authError.textContent = 'Please fill in both fields.';
+            return;
+        }
+        authSubmit.disabled = true;
+        authError.textContent = '';
+        try {
+            const endpoint = authMode === 'signin' ? '/api/login' : '/api/register';
+            const resp = await fetch(endpoint, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ email, password })
+            });
+            const data = await resp.json();
+            if (resp.ok) {
+                currentUser = data.email;
+                updateAuthUI();
+                closeAuthModal();
+            } else {
+                authError.textContent = data.error || 'Something went wrong.';
+            }
+        } catch (err) {
+            authError.textContent = 'Network error. Please try again.';
+        } finally {
+            authSubmit.disabled = false;
+        }
+    }
+
+    async function signout() {
+        try {
+            await fetch('/api/logout', { method: 'POST' });
+            currentUser = null;
+            updateAuthUI();
+        } catch (err) {
+            // ignore
+        }
+    }
+
     /* ---------- Events ---------- */
 
     menuToggleBtn.addEventListener('click', openDrawer);
@@ -854,6 +950,15 @@ document.addEventListener('DOMContentLoaded', () => {
 
     chatForm.addEventListener('submit', sendChat);
 
+    /* Auth event listeners */
+    document.getElementById('signinBtn').addEventListener('click', () => openAuthModal('signin'));
+    authModalClose.addEventListener('click', closeAuthModal);
+    authModal.addEventListener('click', (e) => { if (e.target === authModal) closeAuthModal(); });
+    tabSignin.addEventListener('click', () => openAuthModal('signin'));
+    tabRegister.addEventListener('click', () => openAuthModal('register'));
+    authForm.addEventListener('submit', handleAuthSubmit);
+
+    checkAuth();
     tickerInput.focus();
 });
 

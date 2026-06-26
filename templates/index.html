@@ -14,7 +14,12 @@
         <!-- ============ Step 1: Minimal input view ============ -->
         <section id="inputView" class="input-view">
             <header class="header">
-                <h1 class="logo">StockBrief</h1>
+                <div class="header-row">
+                    <h1 class="logo">StockBrief</h1>
+                    <div class="auth-area" id="authArea">
+                        <button class="auth-btn" id="signinBtn" type="button">Sign in</button>
+                    </div>
+                </div>
                 <p class="tagline">Clear research briefs for everyday investors</p>
             </header>
 
@@ -182,6 +187,23 @@
                 </section>
             </section>
         </main>
+    </div>
+
+    <!-- Auth modal -->
+    <div class="modal-overlay" id="authModal">
+        <div class="modal">
+            <button class="modal-close" id="authModalClose" type="button" aria-label="Close">&times;</button>
+            <div class="modal-tabs">
+                <button class="modal-tab active" id="tabSignin" type="button">Sign in</button>
+                <button class="modal-tab" id="tabRegister" type="button">Register</button>
+            </div>
+            <form id="authForm">
+                <input type="email" id="authEmail" placeholder="Email" autocomplete="email" required>
+                <input type="password" id="authPassword" placeholder="Password (min 6 characters)" autocomplete="current-password" required>
+                <button type="submit" class="auth-submit" id="authSubmit">Sign in</button>
+                <p class="auth-error" id="authError" role="alert"></p>
+            </form>
+        </div>
     </div>
 
     <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>

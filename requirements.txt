@@ -3,3 +3,5 @@ yfinance==1.4.1
 requests==2.34.2
 gunicorn==26.0.0
 pandas
+flask-sqlalchemy==3.1.1
+flask-login==0.6.3
