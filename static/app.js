@@ -346,9 +346,10 @@ document.addEventListener('DOMContentLoaded', () => {
             if (sourceEl && data.source) sourceEl.textContent = data.source;
             if (badgeCell) badgeCell.innerHTML = renderBadge(a.badge, a.text);
 
-            // Update the signal class without clobbering collapsed/expanded state
+            // Update the signal class, then expand the row so the new data is visible
             rowEl.classList.remove('signal-green', 'signal-yellow', 'signal-red', 'signal-grey');
             rowEl.classList.add(`signal-${a.badge || 'grey'}`);
+            rowEl.classList.remove('collapsed');
 
             // Keep currentFactors in sync for the compare feature
             const peFactor = currentFactors.find(f => f.name === 'P/E Ratio');
